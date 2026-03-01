@@ -953,6 +953,108 @@
   .fp-upload-btn-active { border-color: var(--accent) !important; color: var(--accent) !important; background: rgba(124,92,191,0.08) !important; }
   #fpControlsBar.visible { display: flex !important; }
 
+  /* ── REFERENCE GALLERY ── */
+  #refGalleryPanel {
+    position: fixed;
+    top: 52px;
+    right: 0;
+    width: 320px;
+    height: calc(100vh - 52px);
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+  }
+  #refGalleryPanel.open { transform: translateX(0); }
+  .ref-gallery-header {
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ref-gallery-header h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .ref-gallery-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    align-content: start;
+  }
+  .ref-gallery-item {
+    aspect-ratio: 4/3;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s;
+  }
+  .ref-gallery-item:hover { border-color: var(--accent); }
+  .ref-gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .ref-gallery-item .delete-ref {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    background: rgba(220,79,79,0.9);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .ref-gallery-item:hover .delete-ref { opacity: 1; }
+  .ref-upload-zone {
+    aspect-ratio: 4/3;
+    border: 2px dashed var(--border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text3);
+    font-size: 11px;
+    transition: all 0.15s;
+  }
+  .ref-upload-zone:hover { border-color: var(--accent); color: var(--accent); }
+  .ref-upload-zone span { font-size: 24px; margin-bottom: 4px; }
+  .ref-lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.9);
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+  }
+  .ref-lightbox.open { display: flex; }
+  .ref-lightbox img { max-width: 90%; max-height: 90%; object-fit: contain; }
+
   /* Scale modal unit toggle */
   #scaleModal .modal { max-height: 92vh; overflow-y: auto; }
 
@@ -1043,6 +1145,12 @@
         </label>
         <button class="tool-btn" id="fpSettingsBtn" onclick="openFloorPlanPanel()" title="Floor Plan Settings" style="display:none;font-size:11px;">⚙</button>
       </div>
+      <!-- REFERENCE GALLERY BUTTON -->
+      <div class="tool-group">
+        <button class="tool-btn" onclick="toggleRefGallery()" title="Reference Images" style="font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;padding:0 8px;width:auto;gap:4px;display:flex;align-items:center;">
+          📷 References
+        </button>
+      </div>
       <div class="canvas-info" id="canvasInfo">items: 0 | zoom: 100%</div>
     </div>
     <!-- FLOOR PLAN CONTROLS BAR (shown when floor plan is loaded) -->
@@ -1117,6 +1225,26 @@
       <textarea id="notesArea" style="width:100%;height:100%;min-height:300px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;padding:8px;resize:none;outline:none;" placeholder="Diagram notes, shoot details, call sheet info..."></textarea>
     </div>
   </div>
+</div>
+
+<!-- REFERENCE GALLERY PANEL -->
+<div id="refGalleryPanel">
+  <div class="ref-gallery-header">
+    <h3>📷 Reference Images</h3>
+    <button class="btn" onclick="toggleRefGallery()" style="padding:4px 8px;">✕</button>
+  </div>
+  <div class="ref-gallery-grid" id="refGalleryGrid">
+    <label class="ref-upload-zone">
+      <span>+</span>
+      Add Image
+      <input type="file" accept="image/*" multiple style="display:none" onchange="handleRefUpload(event)">
+    </label>
+  </div>
+</div>
+
+<!-- REFERENCE LIGHTBOX -->
+<div class="ref-lightbox" id="refLightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" alt="Reference">
 </div>
 
 <!-- INFO MODAL -->
@@ -3066,6 +3194,67 @@ function updateDBCount() {
 }
 
 // ============================================================
+// REFERENCE GALLERY
+// ============================================================
+let refImages = JSON.parse(localStorage.getItem('gafferRefImages') || '[]');
+
+function toggleRefGallery() {
+  document.getElementById('refGalleryPanel').classList.toggle('open');
+}
+
+function handleRefUpload(e) {
+  const files = Array.from(e.target.files);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      refImages.push({
+        id: Date.now() + Math.random(),
+        data: ev.target.result,
+        name: file.name
+      });
+      localStorage.setItem('gafferRefImages', JSON.stringify(refImages));
+      renderRefGallery();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function renderRefGallery() {
+  const grid = document.getElementById('refGalleryGrid');
+  grid.innerHTML = refImages.map(img => `
+    <div class="ref-gallery-item" onclick="openLightbox('${img.id}')">
+      <img src="${img.data}" alt="${img.name}">
+      <button class="delete-ref" onclick="event.stopPropagation();deleteRef('${img.id}')">✕</button>
+    </div>
+  `).join('') + `
+    <label class="ref-upload-zone">
+      <span>+</span>
+      Add Image
+      <input type="file" accept="image/*" multiple style="display:none" onchange="handleRefUpload(event)">
+    </label>
+  `;
+}
+
+function deleteRef(id) {
+  refImages = refImages.filter(img => img.id != id);
+  localStorage.setItem('gafferRefImages', JSON.stringify(refImages));
+  renderRefGallery();
+}
+
+function openLightbox(id) {
+  const img = refImages.find(i => i.id == id);
+  if (img) {
+    document.getElementById('lightboxImg').src = img.data;
+    document.getElementById('refLightbox').classList.add('open');
+  }
+}
+
+function closeLightbox() {
+  document.getElementById('refLightbox').classList.remove('open');
+}
+
+// ============================================================
 // INIT
 // ============================================================
 document.getElementById('tallyDate').textContent = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
@@ -3074,6 +3263,7 @@ renderEquipmentList();
 loadKitsFromStorage();
 renderKitsSidebar();
 updateDBCount();
+renderRefGallery();
 </script>
 
 </body>
