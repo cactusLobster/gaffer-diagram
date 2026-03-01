@@ -953,6 +953,122 @@
   .fp-upload-btn-active { border-color: var(--accent) !important; color: var(--accent) !important; background: rgba(124,92,191,0.08) !important; }
   #fpControlsBar.visible { display: flex !important; }
 
+  /* ── AI RENDER PANEL ── */
+  #aiRenderPanel {
+    position: fixed;
+    top: 52px;
+    right: 0;
+    width: 480px;
+    height: calc(100vh - 52px);
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+  }
+  #aiRenderPanel.open { transform: translateX(0); }
+  .render-header {
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #e07b1a 0%, #dc4f4f 100%);
+  }
+  .render-header h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: white;
+  }
+  .render-content { flex: 1; overflow-y: auto; padding: 16px; }
+  .render-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .render-option {
+    padding: 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .render-option:hover { border-color: var(--border); }
+  .render-option.selected { border-color: var(--accent); background: rgba(124,92,191,0.1); }
+  .render-option .icon { font-size: 32px; margin-bottom: 8px; }
+  .render-option .label { font-weight: 600; font-size: 12px; }
+  .render-option .desc { font-size: 10px; color: var(--text3); margin-top: 4px; }
+  .render-preview {
+    background: #1a1a1a;
+    border-radius: 8px;
+    aspect-ratio: 16/9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .render-preview img { width: 100%; height: 100%; object-fit: cover; }
+  .render-preview .placeholder {
+    color: #666;
+    text-align: center;
+  }
+  .render-preview .placeholder span { font-size: 48px; display: block; margin-bottom: 8px; }
+  .render-progress {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+  }
+  .render-progress .bar {
+    height: 8px;
+    background: var(--surface3);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 12px 0;
+  }
+  .render-progress .fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--lights), var(--accent));
+    transition: width 0.3s;
+  }
+  .render-settings {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .render-settings label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+  .render-settings textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 12px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 60px;
+    border-radius: 4px;
+  }
+  .render-actions { padding: 14px; border-top: 1px solid var(--border); }
+  .render-actions .btn { width: 100%; }
+
   /* Scale modal unit toggle */
   #scaleModal .modal { max-height: 92vh; overflow-y: auto; }
 
@@ -1043,6 +1159,12 @@
         </label>
         <button class="tool-btn" id="fpSettingsBtn" onclick="openFloorPlanPanel()" title="Floor Plan Settings" style="display:none;font-size:11px;">⚙</button>
       </div>
+      <!-- AI RENDER BUTTON -->
+      <div class="tool-group">
+        <button class="tool-btn" onclick="toggleRenderPanel()" title="AI Render Preview" style="font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;padding:0 8px;width:auto;gap:4px;display:flex;align-items:center;background:linear-gradient(135deg,#e07b1a,#dc4f4f);color:white;border:none;">
+          🎨 AI Render
+        </button>
+      </div>
       <div class="canvas-info" id="canvasInfo">items: 0 | zoom: 100%</div>
     </div>
     <!-- FLOOR PLAN CONTROLS BAR (shown when floor plan is loaded) -->
@@ -1116,6 +1238,63 @@
     <div class="sidebar-content" id="notesPanel" style="display:none;padding:10px;">
       <textarea id="notesArea" style="width:100%;height:100%;min-height:300px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;padding:8px;resize:none;outline:none;" placeholder="Diagram notes, shoot details, call sheet info..."></textarea>
     </div>
+  </div>
+</div>
+
+<!-- AI RENDER PANEL -->
+<div id="aiRenderPanel">
+  <div class="render-header">
+    <h3>🎨 AI Render Preview</h3>
+    <button class="btn" onclick="toggleRenderPanel()" style="padding:4px 8px;background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.3);color:white;">✕</button>
+  </div>
+  <div class="render-content">
+    <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Generate a realistic preview of your lighting setup. AI will render what this diagram would look like on set.</p>
+
+    <div class="render-options" id="renderStyles">
+      <div class="render-option selected" onclick="selectRenderStyle('technical')">
+        <div class="icon">📊</div>
+        <div class="label">Technical</div>
+        <div class="desc">Clean BTS-style reference</div>
+      </div>
+      <div class="render-option" onclick="selectRenderStyle('cinematic')">
+        <div class="icon">🎬</div>
+        <div class="label">Cinematic</div>
+        <div class="desc">Moody film look</div>
+      </div>
+      <div class="render-option" onclick="selectRenderStyle('interview')">
+        <div class="icon">🎙️</div>
+        <div class="label">Interview</div>
+        <div class="desc">Corporate/doc style</div>
+      </div>
+      <div class="render-option" onclick="selectRenderStyle('product')">
+        <div class="icon">📦</div>
+        <div class="label">Product</div>
+        <div class="desc">E-commerce lighting</div>
+      </div>
+    </div>
+
+    <div class="render-settings">
+      <label>Scene Description (optional)</label>
+      <textarea id="renderPrompt" placeholder="e.g., Female model in her 30s, gray backdrop, minimal set..."></textarea>
+    </div>
+
+    <div class="render-preview" id="renderPreview">
+      <div class="placeholder">
+        <span>🖼️</span>
+        Preview will appear here
+      </div>
+    </div>
+
+    <div id="renderProgress" style="display:none;">
+      <div class="render-progress">
+        <p style="font-weight:600;margin-bottom:4px;">Generating render...</p>
+        <div class="bar"><div class="fill" id="renderProgressFill" style="width:0%"></div></div>
+        <p style="font-size:11px;color:var(--text3);" id="renderStatus">Analyzing lighting setup...</p>
+      </div>
+    </div>
+  </div>
+  <div class="render-actions">
+    <button class="btn primary" onclick="generateRender()" id="renderBtn">🎨 Generate Render</button>
   </div>
 </div>
 
@@ -3063,6 +3242,103 @@ function updateDBCount() {
   document.getElementById('dbCount').textContent = EQUIPMENT.length + ' items · ' + KITS.length + ' kits';
   document.getElementById('dbNavItemsCount').textContent = EQUIPMENT.length;
   document.getElementById('dbNavKitsCount').textContent = KITS.length;
+}
+
+// ============================================================
+// AI RENDER PREVIEW
+// ============================================================
+let selectedRenderStyle = 'technical';
+
+function toggleRenderPanel() {
+  document.getElementById('aiRenderPanel').classList.toggle('open');
+}
+
+function selectRenderStyle(style) {
+  selectedRenderStyle = style;
+  document.querySelectorAll('.render-option').forEach(el => el.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+}
+
+function generateRender() {
+  if (canvasItems.length === 0) {
+    alert('Add some lights to your diagram first!');
+    return;
+  }
+
+  // Build lighting description from diagram
+  const lightingDesc = buildLightingDescription();
+
+  // Show progress
+  document.getElementById('renderProgress').style.display = 'block';
+  document.getElementById('renderBtn').disabled = true;
+  document.getElementById('renderBtn').textContent = 'Generating...';
+
+  // Simulate render progress
+  let progress = 0;
+  const statuses = [
+    'Analyzing lighting setup...',
+    'Calculating light positions...',
+    'Applying color temperatures...',
+    'Rendering shadows...',
+    'Adding atmosphere...',
+    'Finalizing image...'
+  ];
+
+  const interval = setInterval(() => {
+    progress += Math.random() * 15 + 5;
+    if (progress > 100) progress = 100;
+
+    document.getElementById('renderProgressFill').style.width = progress + '%';
+    document.getElementById('renderStatus').textContent = statuses[Math.floor(progress / 20)] || statuses[statuses.length - 1];
+
+    if (progress >= 100) {
+      clearInterval(interval);
+      setTimeout(() => showMockRender(), 500);
+    }
+  }, 500);
+}
+
+function buildLightingDescription() {
+  const itemCounts = {};
+  canvasItems.forEach(ci => {
+    const item = EQUIPMENT.find(x => x.id === ci.equipId);
+    if (item) {
+      itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
+    }
+  });
+
+  const lights = Object.entries(itemCounts)
+    .map(([name, count]) => count > 1 ? `${count}x ${name}` : name)
+    .join(', ');
+
+  const customPrompt = document.getElementById('renderPrompt').value;
+  const stylePrompts = {
+    technical: 'Behind-the-scenes photo of a professional film set, showing',
+    cinematic: 'Cinematic still frame with dramatic lighting, featuring',
+    interview: 'Professional interview setup with clean corporate lighting,',
+    product: 'E-commerce product photography setup with'
+  };
+
+  return `${stylePrompts[selectedRenderStyle]} ${lights}. ${customPrompt}`;
+}
+
+function showMockRender() {
+  // In production, this would be the AI-generated image
+  // For demo, show a placeholder with the prompt
+  const preview = document.getElementById('renderPreview');
+  const prompt = buildLightingDescription();
+
+  preview.innerHTML = `
+    <div style="padding:20px;text-align:center;color:#999;">
+      <p style="font-size:12px;margin-bottom:12px;">🔮 In production, AI would render:</p>
+      <p style="font-size:11px;font-style:italic;max-width:300px;margin:0 auto;">"${prompt}"</p>
+      <p style="font-size:10px;margin-top:16px;color:#666;">Connect an image generation API (DALL-E, Midjourney, Flux) to enable this feature.</p>
+    </div>
+  `;
+
+  document.getElementById('renderProgress').style.display = 'none';
+  document.getElementById('renderBtn').disabled = false;
+  document.getElementById('renderBtn').textContent = '🎨 Generate Render';
 }
 
 // ============================================================
