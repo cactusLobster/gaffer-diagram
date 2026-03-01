@@ -1,0 +1,3080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GafferDiagram — Lighting Design Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f3f8;
+    --surface: #ffffff;
+    --surface2: #ede9f6;
+    --surface3: #e2ddf0;
+    --border: #d0c8e8;
+    --accent: #7c5cbf;
+    --accent2: #5e3fa3;
+    --text: #2d2640;
+    --text2: #6b5e8a;
+    --text3: #a899c4;
+    --lights: #e07b1a;
+    --grip: #0ea5a0;
+    --digital: #7c5cbf;
+    --expendables: #dc4f4f;
+    --green: #16a070;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 18px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon { font-size: 22px; }
+  .logo span { color: var(--text2); font-size: 12px; letter-spacing: 1px; margin-left: 6px; }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    letter-spacing: 1px;
+    font-size: 12px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+  .btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+  .btn.danger { border-color: #f87171; color: #f87171; }
+  .btn.danger:hover { background: #f87171; color: #000; }
+  .diagram-name-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    width: 220px;
+    outline: none;
+  }
+  .diagram-name-input:focus { border-bottom-color: var(--accent); }
+
+  /* MAIN LAYOUT */
+  .app-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 260px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sidebar-tab {
+    flex: 1;
+    padding: 10px 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+    cursor: pointer;
+    color: var(--text3);
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .sidebar-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .sidebar-tab:hover:not(.active) { color: var(--text2); }
+
+  .sidebar-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+  .sidebar-content::-webkit-scrollbar { width: 4px; }
+  .sidebar-content::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-content::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .category-header {
+    padding: 10px 14px 6px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 10;
+    cursor: pointer;
+    user-select: none;
+  }
+  .category-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .category-count {
+    margin-left: auto;
+    font-size: 9px;
+    color: var(--text3);
+    background: var(--surface2);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+  .category-arrow { margin-left: 4px; font-size: 8px; transition: transform 0.2s; }
+  .category-collapsed .category-arrow { transform: rotate(-90deg); }
+  .category-items { }
+  .category-collapsed .category-items { display: none; }
+
+  .equip-item {
+    padding: 7px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: grab;
+    transition: background 0.1s;
+    border-left: 2px solid transparent;
+    position: relative;
+  }
+  .equip-item:hover { background: var(--surface2); }
+  .equip-item:active { cursor: grabbing; }
+  .equip-item.dragging { opacity: 0.4; }
+  .equip-icon {
+    font-size: 18px;
+    width: 26px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .equip-info { flex: 1; min-width: 0; }
+  .equip-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .equip-sub {
+    font-size: 10px;
+    color: var(--text3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .equip-info-btn {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text3);
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .equip-info-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* CANVAS AREA */
+  .canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  .canvas-toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .tool-group { display: flex; gap: 4px; align-items: center; }
+  .tool-separator { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+  .tool-btn {
+    width: 30px; height: 30px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+  .tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tool-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+  .canvas-info { margin-left: auto; font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text3); }
+
+  #diagram-canvas {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(124,92,191,0.04) 0%, transparent 70%),
+      linear-gradient(rgba(208,200,232,0.5) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(208,200,232,0.5) 1px, transparent 1px);
+    background-size: cover, 40px 40px, 40px 40px;
+    background-color: var(--bg);
+    cursor: default;
+  }
+  #diagram-canvas.drag-over { background-color: rgba(124,92,191,0.05); }
+
+  /* CANVAS ITEMS */
+  .canvas-item {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: move;
+    user-select: none;
+    z-index: 10;
+    padding: 4px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: border-color 0.1s;
+    min-width: 64px;
+  }
+  .canvas-item:hover { border-color: var(--border); z-index: 20; }
+  .canvas-item.selected { border-color: var(--accent) !important; z-index: 30; }
+  .canvas-item .item-icon { font-size: 32px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); }
+  .canvas-item .item-label {
+    font-size: 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text);
+    text-align: center;
+    margin-top: 3px;
+    background: rgba(255,255,255,0.92);
+    padding: 1px 5px;
+    border-radius: 2px;
+    white-space: nowrap;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .canvas-item .item-delete {
+    position: absolute;
+    top: -6px; right: -6px;
+    width: 16px; height: 16px;
+    background: #f87171;
+    color: #000;
+    border: none;
+    border-radius: 50%;
+    font-size: 10px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+  .canvas-item.selected .item-delete { display: flex; }
+
+  /* Annotation / text elements */
+  .canvas-annotation {
+    position: absolute;
+    z-index: 15;
+    cursor: move;
+    user-select: none;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    transition: border-color 0.1s;
+  }
+  .canvas-annotation:hover { border-color: var(--border); }
+  .canvas-annotation.selected { border-color: var(--accent) !important; }
+  .annotation-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 1px;
+    outline: none;
+    background: transparent;
+    border: none;
+    min-width: 60px;
+    min-height: 20px;
+    width: auto;
+    display: block;
+    white-space: nowrap;
+  }
+
+  /* Arrow/line canvas */
+  #arrow-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    width: 240px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .panel-header {
+    padding: 12px 14px 8px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .tally-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .tally-list::-webkit-scrollbar { width: 4px; }
+  .tally-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .tally-category {
+    padding: 6px 14px 3px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tally-item {
+    padding: 4px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .tally-icon { font-size: 14px; width: 20px; text-align: center; }
+  .tally-name { flex: 1; color: var(--text); font-size: 11px; }
+  .tally-qty {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 24px;
+    text-align: right;
+  }
+  .tally-empty {
+    padding: 30px 14px;
+    text-align: center;
+    color: var(--text3);
+    font-size: 11px;
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 1px;
+  }
+  .tally-total {
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--text2);
+    flex-shrink: 0;
+  }
+  .tally-total span { color: var(--accent); font-family: 'Share Tech Mono', monospace; font-size: 14px; }
+
+  .export-section {
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .export-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 2px;
+  }
+  .btn-full { width: 100%; text-align: center; padding: 7px; }
+
+  /* TOOLTIP / INFO MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(45,38,64,0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    width: 420px;
+    max-width: 95vw;
+    padding: 24px;
+    position: relative;
+  }
+  .modal-close {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    font-size: 18px;
+    cursor: pointer;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-icon { font-size: 40px; margin-bottom: 10px; }
+  .modal-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .modal-cat {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-bottom: 14px;
+  }
+  .modal-desc { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 16px; }
+  .specs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .spec-item {
+    background: var(--surface3);
+    padding: 8px 10px;
+    border-radius: 2px;
+  }
+  .spec-key {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .spec-val { font-size: 12px; color: var(--text); font-weight: 500; }
+
+  /* DRAG GHOST */
+  .drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.85;
+    font-size: 36px;
+    transform: translate(-50%, -50%);
+    filter: drop-shadow(0 4px 12px rgba(124,92,191,0.4));
+    display: none;
+  }
+
+  /* Selection box */
+  .selection-box {
+    position: absolute;
+    border: 1px dashed var(--accent);
+    background: rgba(124,92,191,0.05);
+    pointer-events: none;
+    z-index: 50;
+    display: none;
+  }
+
+  /* Scrollbar global */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  .search-box {
+    margin: 8px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: 12px;
+    outline: none;
+    width: calc(100% - 20px);
+    transition: border-color 0.15s;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--text3); }
+
+  .no-results { padding: 20px; text-align: center; color: var(--text3); font-size: 11px; }
+
+  /* Power indicator on canvas item */
+  .power-badge {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    padding: 1px 3px;
+    border-radius: 2px;
+    display: none;
+  }
+  .canvas-item.selected .power-badge { display: block; }
+
+  .power-total {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    border-top: 1px solid var(--border);
+    padding: 8px 14px;
+    flex-shrink: 0;
+  }
+  .power-total strong { color: var(--accent2); }
+
+  /* ── DATABASE EDITOR MODAL ── */
+  .db-overlay {
+    position: fixed; inset: 0;
+    background: rgba(45,38,64,0.55);
+    z-index: 2000;
+    display: flex; align-items: stretch; justify-content: flex-end;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .db-overlay.open { opacity: 1; pointer-events: all; }
+
+  .db-panel {
+    width: 820px; max-width: 98vw;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    transform: translateX(40px);
+    transition: transform 0.25s;
+    overflow: hidden;
+  }
+  .db-overlay.open .db-panel { transform: translateX(0); }
+
+  .db-header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 14px;
+    flex-shrink: 0;
+  }
+  .db-header h2 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px; font-weight: 700; letter-spacing: 1px;
+    color: var(--text); flex: 1;
+  }
+  .db-header h2 span { color: var(--accent); }
+  .db-body { display: flex; flex: 1; overflow: hidden; }
+
+  /* Left: item list */
+  .db-list-col {
+    width: 260px; flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .db-list-toolbar {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 6px; flex-shrink: 0;
+  }
+  .db-search {
+    flex: 1; background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 5px 8px;
+    color: var(--text); font-size: 11px;
+    outline: none; font-family: 'Barlow', sans-serif;
+  }
+  .db-search:focus { border-color: var(--accent); }
+  .db-cat-filter {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text2); font-size: 11px; padding: 5px 6px;
+    outline: none; cursor: pointer; font-family: 'Barlow', sans-serif;
+  }
+  .db-item-list { flex: 1; overflow-y: auto; }
+  .db-item-row {
+    padding: 8px 12px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background 0.1s;
+    border-left: 3px solid transparent;
+    position: relative;
+  }
+  .db-item-row:hover { background: var(--surface2); }
+  .db-item-row.active { background: var(--surface2); border-left-color: var(--accent); }
+  .db-item-row .di-thumb {
+    width: 32px; height: 32px; border-radius: 4px;
+    background: var(--surface3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0; overflow: hidden;
+  }
+  .db-item-row .di-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+  .db-item-row .di-info { flex: 1; min-width: 0; }
+  .db-item-row .di-name { font-size: 11px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .db-item-row .di-sub { font-size: 10px; color: var(--text3); }
+  .db-item-row .di-del {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1px solid transparent; background: transparent;
+    color: var(--text3); font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: all 0.15s; flex-shrink: 0;
+  }
+  .db-item-row:hover .di-del { opacity: 1; }
+  .db-item-row .di-del:hover { border-color: #dc4f4f; color: #dc4f4f; background: #fff0f0; }
+
+  /* Right: editor form */
+  .db-form-col {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .db-form-header {
+    padding: 12px 20px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  .db-form-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px; font-weight: 700; letter-spacing: 1px;
+    color: var(--text2); flex: 1;
+  }
+  .db-form-body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+
+  .form-row { display: flex; gap: 12px; }
+  .form-field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .form-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text3); font-weight: 700;
+  }
+  .form-input, .form-select, .form-textarea {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Barlow', sans-serif; font-size: 12px;
+    padding: 7px 10px; outline: none; transition: border-color 0.15s;
+    border-radius: 2px;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+  .form-textarea { resize: vertical; min-height: 70px; }
+  .form-select option { background: var(--surface); }
+
+  /* Thumbnail uploader */
+  .thumb-uploader {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .thumb-preview {
+    width: 72px; height: 72px; border-radius: 6px;
+    background: var(--surface2); border: 1px dashed var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; flex-shrink: 0; overflow: hidden; cursor: pointer;
+    transition: border-color 0.15s; position: relative;
+  }
+  .thumb-preview:hover { border-color: var(--accent); }
+  .thumb-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; }
+  .thumb-preview .thumb-overlay {
+    position: absolute; inset: 0; background: rgba(124,92,191,0.7);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 18px; opacity: 0; transition: opacity 0.15s;
+    border-radius: 5px;
+  }
+  .thumb-preview:hover .thumb-overlay { opacity: 1; }
+  .thumb-actions { display: flex; flex-direction: column; gap: 6px; }
+  .thumb-hint { font-size: 10px; color: var(--text3); line-height: 1.4; }
+
+  /* Emoji picker row */
+  .emoji-row {
+    display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 0;
+  }
+  .emoji-opt {
+    width: 30px; height: 30px; border-radius: 4px;
+    border: 1px solid var(--border); background: var(--surface2);
+    font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s;
+  }
+  .emoji-opt:hover { border-color: var(--accent); transform: scale(1.15); }
+  .emoji-opt.selected { border-color: var(--accent); background: var(--surface3); }
+
+  /* Specs editor */
+  .specs-editor { display: flex; flex-direction: column; gap: 6px; }
+  .spec-row {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .spec-row .form-input { flex: 1; }
+  .spec-row .spec-del {
+    width: 26px; height: 26px; flex-shrink: 0;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text3); font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 2px; transition: all 0.15s;
+  }
+  .spec-row .spec-del:hover { border-color: #dc4f4f; color: #dc4f4f; }
+  .add-spec-btn {
+    padding: 5px 10px; font-size: 11px; cursor: pointer;
+    border: 1px dashed var(--border); background: transparent;
+    color: var(--text3); font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+    transition: all 0.15s; border-radius: 2px; text-align: center;
+  }
+  .add-spec-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .db-form-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    background: var(--surface2);
+  }
+  .save-status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; color: var(--green);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .save-status.show { opacity: 1; }
+
+  /* Empty state */
+  .db-empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    color: var(--text3); text-align: center; padding: 30px;
+  }
+  .db-empty-state .es-icon { font-size: 40px; }
+  .db-empty-state p { font-size: 12px; line-height: 1.5; }
+
+  .cat-badge {
+    display: inline-block; padding: 1px 6px; border-radius: 2px;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 9px;
+    font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  }
+  .db-new-badge {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    background: var(--accent); color: white; padding: 1px 5px; border-radius: 2px;
+  }
+
+  /* ── KITS ── */
+  .kit-badge {
+    font-family: 'Share Tech Mono', monospace; font-size: 8px; letter-spacing: 1px;
+    background: linear-gradient(135deg, #7c5cbf, #0ea5a0);
+    color: white; padding: 1px 5px; border-radius: 2px; text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .canvas-kit {
+    position: absolute; display: flex; flex-direction: column; align-items: center;
+    cursor: move; user-select: none; z-index: 10; padding: 4px;
+    border: 1.5px solid rgba(124,92,191,0.4); border-radius: 8px;
+    background: rgba(124,92,191,0.06); transition: border-color 0.1s; min-width: 80px;
+  }
+  .canvas-kit:hover { border-color: var(--accent); z-index: 20; }
+  .canvas-kit.selected { border-color: var(--accent) !important; z-index: 30; box-shadow: 0 0 0 2px rgba(124,92,191,0.25); }
+  .canvas-kit .kit-icon-wrap {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    width: 52px; height: 52px;
+  }
+  .canvas-kit .kit-main-icon { font-size: 30px; line-height: 1; }
+  .canvas-kit .kit-mini-icons {
+    position: absolute; bottom: -2px; right: -4px;
+    display: flex; gap: 1px;
+  }
+  .canvas-kit .kit-mini-icons span { font-size: 10px; }
+  .canvas-kit .kit-label {
+    font-size: 10px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    letter-spacing: 0.5px; color: var(--accent); text-align: center; margin-top: 3px;
+    background: rgba(255,255,255,0.92); padding: 1px 6px; border-radius: 2px;
+    white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .canvas-kit .kit-count-badge {
+    position: absolute; top: -6px; left: -6px;
+    background: linear-gradient(135deg,#7c5cbf,#0ea5a0);
+    color: white; font-family: 'Share Tech Mono', monospace;
+    font-size: 8px; padding: 1px 4px; border-radius: 2px;
+  }
+  .canvas-kit .item-delete {
+    position: absolute; top: -6px; right: -6px; width: 16px; height: 16px;
+    background: #f87171; color: #000; border: none; border-radius: 50%;
+    font-size: 10px; cursor: pointer; display: none;
+    align-items: center; justify-content: center; font-weight: 700;
+  }
+  .canvas-kit.selected .item-delete { display: flex; }
+  .canvas-kit .kit-expand-hint {
+    font-family: 'Share Tech Mono', monospace; font-size: 8px; color: var(--text3);
+    margin-top: 2px; letter-spacing: 0.5px; display: none;
+  }
+  .canvas-kit:hover .kit-expand-hint { display: block; }
+
+  /* Kit editor inside DB panel */
+  .kit-editor-wrap { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; flex: 1; overflow-y: auto; }
+  .kit-contents-list { display: flex; flex-direction: column; gap: 4px; }
+  .kit-content-row {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 6px 10px; border-radius: 3px;
+  }
+  .kit-content-row .kc-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+  .kit-content-row .kc-name { flex: 1; font-size: 11px; color: var(--text); font-weight: 500; }
+  .kit-content-row .kc-qty {
+    width: 44px; background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); font-size: 12px; font-family: 'Share Tech Mono', monospace;
+    text-align: center; padding: 3px 4px; outline: none; border-radius: 2px;
+  }
+  .kit-content-row .kc-qty:focus { border-color: var(--accent); }
+  .kit-content-row .kc-del {
+    width: 20px; height: 20px; border-radius: 50%; border: 1px solid transparent;
+    background: transparent; color: var(--text3); font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .kit-content-row .kc-del:hover { border-color: #dc4f4f; color: #dc4f4f; }
+  .kit-add-item-row {
+    display: flex; gap: 6px; align-items: center; margin-top: 4px;
+  }
+  .kit-add-item-row select { flex: 1; }
+  .kit-summary-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .kit-chip {
+    padding: 2px 8px; border-radius: 20px; font-size: 10px;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 600; letter-spacing: 0.5px;
+    background: var(--surface3); color: var(--text2);
+  }
+  /* Kit list row in left panel */
+  .db-kit-row {
+    padding: 8px 12px; display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background 0.1s; border-left: 3px solid var(--accent);
+    position: relative;
+  }
+  .db-kit-row:hover { background: var(--surface2); }
+  .db-kit-row.active { background: var(--surface2); }
+  .db-kit-row .dk-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+  .db-kit-row .dk-info { flex: 1; min-width: 0; }
+  .db-kit-row .dk-name { font-size: 11px; font-weight: 600; color: var(--text); }
+  .db-kit-row .dk-sub { font-size: 10px; color: var(--text3); }
+  .db-kit-row .di-del {
+    width: 18px; height: 18px; border-radius: 50%; border: 1px solid transparent;
+    background: transparent; color: var(--text3); font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: all 0.15s; flex-shrink: 0;
+  }
+  .db-kit-row:hover .di-del { opacity: 1; }
+  .db-kit-row .di-del:hover { border-color: #dc4f4f; color: #dc4f4f; background: #fff0f0; }
+
+  /* Sidebar kit items */
+  .equip-item.kit-item { background: rgba(124,92,191,0.04); }
+  .equip-item.kit-item:hover { background: rgba(124,92,191,0.1); }
+
+  /* DB header tabs */
+  .db-nav-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--surface); }
+  .db-nav-tab {
+    padding: 9px 18px; font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; color: var(--text3); border-bottom: 2px solid transparent;
+    transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+  }
+  .db-nav-tab:hover { color: var(--text2); }
+  .db-nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .db-tab-count {
+    background: var(--surface2); color: var(--text3); font-size: 9px;
+    padding: 1px 5px; border-radius: 2px;
+  }
+  .db-nav-tab.active .db-tab-count { background: rgba(124,92,191,0.15); color: var(--accent); }
+
+  /* Kit cluster label banner */
+  .kit-cluster-label {
+    position: absolute; z-index: 8; pointer-events: none;
+    display: flex; align-items: center; gap: 6px;
+    background: linear-gradient(90deg, rgba(124,92,191,0.12), rgba(124,92,191,0.04));
+    border: 1px solid rgba(124,92,191,0.25); border-radius: 4px;
+    padding: 3px 10px; white-space: nowrap;
+  }
+  .kit-cluster-icon { font-size: 13px; }
+  .kit-cluster-name {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 11px;
+    font-weight: 700; letter-spacing: 1px; color: var(--accent);
+  }
+  .kit-cluster-count {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    color: var(--text3); background: var(--surface2);
+    padding: 1px 5px; border-radius: 2px;
+  }
+
+  /* ── FLOOR PLAN ── */
+  .fp-upload-btn-active { border-color: var(--accent) !important; color: var(--accent) !important; background: rgba(124,92,191,0.08) !important; }
+  #fpControlsBar.visible { display: flex !important; }
+
+  /* Scale modal unit toggle */
+  #scaleModal .modal { max-height: 92vh; overflow-y: auto; }
+
+  /* Drop-in animation for kit expansion */
+  @keyframes itemDropIn {
+    0%   { opacity: 0; transform: scale(0.4) translateY(-10px); }
+    70%  { transform: scale(1.08) translateY(0); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .item-drop-in { animation: itemDropIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
+
+  @media print {
+    .sidebar, .right-panel, header, .canvas-toolbar { display: none !important; }
+    .canvas-area { flex: 1; }
+    #diagram-canvas { overflow: visible !important; height: auto !important; }
+    body { background: white; }
+    .canvas-item .item-label { color: #000 !important; background: rgba(255,255,255,0.95) !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-icon">⚡</span>
+    GafferDiagram
+    <span>v1.0</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <input class="diagram-name-input" id="diagramName" value="Untitled Lighting Diagram" />
+  </div>
+  <div class="header-actions">
+    <button class="btn" onclick="openDBEditor()">✏ Edit Database</button>
+    <button class="btn" onclick="clearCanvas()">Clear</button>
+    <button class="btn" onclick="exportCSV()">Export CSV</button>
+    <button class="btn primary" onclick="exportDiagram()">Print / Export</button>
+  </div>
+</header>
+
+<div class="app-body">
+  <!-- LEFT PANEL: TALLY -->
+  <div class="right-panel" style="border-right:1px solid var(--border);border-left:none;">
+    <div class="panel-header">
+      Equipment Tally
+      <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text3)" id="tallyDate"></span>
+    </div>
+    <div class="tally-list" id="tallyList">
+      <div class="tally-empty">No equipment placed yet.<br>Drag items onto the canvas.</div>
+    </div>
+    <div class="power-total" id="powerTotal" style="display:none">
+      Est. power draw: <strong id="powerValue">0W</strong>
+    </div>
+    <div class="tally-total">
+      <span>TOTAL UNITS</span>
+      <span id="tallyTotalCount">0</span>
+    </div>
+    <div class="export-section">
+      <div class="export-label">Export Tally</div>
+      <button class="btn btn-full" onclick="exportCSV()">↓ Download CSV</button>
+      <button class="btn btn-full primary" onclick="exportDiagram()">Print Diagram</button>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-area">
+    <div class="canvas-toolbar">
+      <div class="tool-group">
+        <button class="tool-btn active" id="toolSelect" onclick="setTool('select')" title="Select (V)">↖</button>
+        <button class="tool-btn" id="toolText" onclick="setTool('text')" title="Add Text (T)">T</button>
+        <button class="tool-btn" id="toolArrow" onclick="setTool('arrow')" title="Draw Arrow (A)">→</button>
+      </div>
+      <div class="tool-separator"></div>
+      <div class="tool-group">
+        <button class="tool-btn" onclick="zoom(1.1)" title="Zoom In (+)">+</button>
+        <button class="tool-btn" onclick="zoom(0.9)" title="Zoom Out (-)">−</button>
+        <button class="tool-btn" onclick="resetZoom()" title="Reset Zoom">⊙</button>
+      </div>
+      <div class="tool-separator"></div>
+      <div class="tool-group">
+        <button class="tool-btn" onclick="undo()" title="Undo (Ctrl+Z)">↩</button>
+      </div>
+      <div class="tool-separator"></div>
+      <!-- FLOOR PLAN BUTTON -->
+      <div class="tool-group">
+        <label class="tool-btn" id="fpUploadBtn" title="Upload Floor Plan" style="cursor:pointer;font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;padding:0 8px;width:auto;gap:4px;display:flex;align-items:center;">
+          📐 Floor Plan
+          <input type="file" id="floorPlanInput" accept="image/*,.pdf" style="display:none" onchange="handleFloorPlanUpload(event)">
+        </label>
+        <button class="tool-btn" id="fpSettingsBtn" onclick="openFloorPlanPanel()" title="Floor Plan Settings" style="display:none;font-size:11px;">⚙</button>
+      </div>
+      <div class="canvas-info" id="canvasInfo">items: 0 | zoom: 100%</div>
+    </div>
+    <!-- FLOOR PLAN CONTROLS BAR (shown when floor plan is loaded) -->
+    <div id="fpControlsBar" style="display:none;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap;background:var(--surface2);border-bottom:1px solid var(--border);padding:5px 14px;">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1px;">📐 FLOOR PLAN</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:10px;color:var(--text2);">Opacity</span>
+        <input type="range" id="fpOpacity" min="10" max="100" value="40" style="width:80px;accent-color:var(--accent);" oninput="updateFloorPlanOpacity(this.value)">
+        <span id="fpOpacityVal" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--accent);min-width:26px;">40%</span>
+      </div>
+      <div class="tool-separator"></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:10px;color:var(--text2);">Scale</span>
+        <span id="fpScaleDisplay" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text3);">Not set</span>
+        <button class="btn" style="font-size:10px;padding:3px 8px;" onclick="openScaleModal()">📐 Set Scale</button>
+      </div>
+      <div class="tool-separator"></div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span style="font-size:10px;color:var(--text2);">Units</span>
+        <div style="display:flex;background:var(--surface3);border-radius:3px;overflow:hidden;border:1px solid var(--border);">
+          <button id="fpFtBtn" onclick="setScaleUnit('ft')"
+            style="padding:3px 10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;border:none;cursor:pointer;background:var(--accent);color:white;transition:all 0.15s;">FT</button>
+          <button id="fpMBtn" onclick="setScaleUnit('m')"
+            style="padding:3px 10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--text3);transition:all 0.15s;">M</button>
+        </div>
+      </div>
+      <div class="tool-separator"></div>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;color:var(--text2);">
+        <input type="checkbox" id="fpRulerShow" checked style="accent-color:var(--accent);" onchange="toggleRuler(this.checked)"> Ruler
+      </label>
+      <div style="flex:1"></div>
+      <button class="btn" style="font-size:10px;padding:3px 8px;color:#dc4f4f;border-color:#dc4f4f;" onclick="removeFloorPlan()">✕ Remove</button>
+    </div>
+    <div id="diagram-canvas"
+      ondragover="onDragOver(event)"
+      ondrop="onDrop(event)"
+      onmousedown="onCanvasMouseDown(event)"
+      onmousemove="onCanvasMouseMove(event)"
+      onmouseup="onCanvasMouseUp(event)">
+      <!-- Floor plan layer (behind everything) -->
+      <img id="floorPlanImg" style="display:none;position:absolute;top:0;left:0;z-index:1;pointer-events:none;opacity:0.4;transform-origin:top left;" draggable="false">
+      <!-- Ruler overlay SVG -->
+      <svg id="rulerSvg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4;"></svg>
+      <svg id="arrow-svg"></svg>
+      <div class="selection-box" id="selectionBox"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL: EQUIPMENT / KITS / NOTES -->
+  <div class="sidebar" style="border-left:1px solid var(--border);border-right:none;">
+    <div class="sidebar-tabs">
+      <div class="sidebar-tab active" onclick="switchTab(this,'equipment')">Equipment</div>
+      <div class="sidebar-tab" onclick="switchTab(this,'kits')">Kits</div>
+      <div class="sidebar-tab" onclick="switchTab(this,'notes')">Notes</div>
+    </div>
+    <div class="sidebar-content" id="equipmentPanel">
+      <input class="search-box" type="text" id="searchInput" placeholder="Search equipment..." oninput="filterEquipment(this.value)">
+      <div id="equipmentList"></div>
+    </div>
+    <div class="sidebar-content" id="kitsPanel" style="display:none;">
+      <div style="padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center;flex-shrink:0;">
+        <span style="font-size:11px;color:var(--text3);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;flex:1;">DROP TO EXPAND ON CANVAS</span>
+        <button class="btn" style="font-size:10px;padding:4px 8px;" onclick="openDBEditor('kits')">+ New Kit</button>
+      </div>
+      <div id="kitsList"></div>
+      <div id="kitsEmpty" style="display:none;padding:30px 16px;text-align:center;color:var(--text3);font-size:11px;font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;">
+        No kits yet.<br>Create kits in the<br>Database Editor.
+        <br><br><button class="btn primary" style="font-size:10px;" onclick="openDBEditor('kits')">Open Kit Builder</button>
+      </div>
+    </div>
+    <div class="sidebar-content" id="notesPanel" style="display:none;padding:10px;">
+      <textarea id="notesArea" style="width:100%;height:100%;min-height:300px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;padding:8px;resize:none;outline:none;" placeholder="Diagram notes, shoot details, call sheet info..."></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- INFO MODAL -->
+<div class="modal-overlay" id="infoModal" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeInfoModal()">✕</button>
+    <div class="modal-icon" id="modalIcon"></div>
+    <div class="modal-name" id="modalName"></div>
+    <div class="modal-cat" id="modalCat"></div>
+    <div class="modal-desc" id="modalDesc"></div>
+    <div class="specs-grid" id="modalSpecs"></div>
+  </div>
+</div>
+
+<!-- DRAG GHOST -->
+<div class="drag-ghost" id="dragGhost"></div>
+
+<!-- DB EDITOR OVERLAY -->
+<div class="db-overlay" id="dbOverlay">
+  <div class="db-panel">
+    <div class="db-header">
+      <span style="font-size:22px">🗄️</span>
+      <h2>Equipment <span>Database Editor</span></h2>
+      <button class="btn" onclick="closeDBEditor()">✕ Close</button>
+    </div>
+    <div class="db-nav-tabs">
+      <div class="db-nav-tab active" id="dbNavItems" onclick="switchDBTab('items')">
+        Equipment <span class="db-tab-count" id="dbNavItemsCount">0</span>
+      </div>
+      <div class="db-nav-tab" id="dbNavKits" onclick="switchDBTab('kits')">
+        🎁 Kits &amp; Groups <span class="db-tab-count" id="dbNavKitsCount">0</span>
+      </div>
+    </div>
+    <!-- ITEMS TAB -->
+    <div id="dbTabItems" class="db-body">
+      <!-- Left: list -->
+      <div class="db-list-col">
+        <div class="db-list-toolbar">
+          <input class="db-search" id="dbSearch" type="text" placeholder="Search…" oninput="renderDBList()">
+          <select class="db-cat-filter" id="dbCatFilter" onchange="renderDBList()">
+            <option value="">All</option>
+            <option value="lights">Lights</option>
+            <option value="grip">Grip</option>
+            <option value="digital">Digital</option>
+            <option value="expendables">Expendables</option>
+          </select>
+        </div>
+        <div class="db-item-list" id="dbItemList"></div>
+      </div>
+      <!-- Right: form -->
+      <div class="db-form-col" id="dbFormCol">
+        <div class="db-empty-state" id="dbEmptyState">
+          <div class="es-icon">✏️</div>
+          <p>Select an item from the list to edit it,<br>or add a new item to get started.</p>
+          <button class="btn primary" onclick="startNewItem()">+ Add New Item</button>
+        </div>
+        <div id="dbFormWrap" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+          <div class="db-form-header">
+            <div class="db-form-title" id="dbFormTitle">New Item</div>
+            <span id="dbNewBadge" class="db-new-badge" style="display:none">NEW</span>
+            <button class="btn" onclick="startNewItem()">+ New Item</button>
+          </div>
+          <div class="db-form-body" id="dbFormBody">
+
+            <!-- Thumbnail + Icon -->
+            <div class="form-row" style="align-items:flex-start;gap:16px;">
+              <div class="form-field" style="flex:0 0 auto;">
+                <div class="form-label">Thumbnail / Icon</div>
+                <div class="thumb-uploader">
+                  <div class="thumb-preview" id="thumbPreview" onclick="document.getElementById('thumbFileInput').click()">
+                    <span id="thumbEmoji">💡</span>
+                    <div class="thumb-overlay">📷</div>
+                  </div>
+                  <div class="thumb-actions">
+                    <button class="btn" style="font-size:10px;padding:4px 8px;" onclick="document.getElementById('thumbFileInput').click()">Upload Image</button>
+                    <button class="btn" style="font-size:10px;padding:4px 8px;" onclick="clearThumb()">Use Emoji</button>
+                    <div class="thumb-hint">JPG/PNG/GIF<br>max 2MB</div>
+                  </div>
+                </div>
+                <input type="file" id="thumbFileInput" accept="image/*" style="display:none" onchange="handleThumbUpload(event)">
+              </div>
+              <div class="form-field" style="flex:1;">
+                <div class="form-label">Choose Emoji Icon</div>
+                <div class="emoji-row" id="emojiRow"></div>
+                <div style="display:flex;gap:6px;margin-top:4px;align-items:center;">
+                  <input class="form-input" id="customEmoji" style="width:50px;text-align:center;font-size:18px;" maxlength="2" placeholder="✨" oninput="setEmojiFromInput(this.value)">
+                  <span style="font-size:10px;color:var(--text3);">or type any emoji</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Name + Sub -->
+            <div class="form-row">
+              <div class="form-field" style="flex:2">
+                <div class="form-label">Equipment Name *</div>
+                <input class="form-input" id="fName" placeholder="e.g. ARRI SkyPanel S-C">
+              </div>
+              <div class="form-field" style="flex:1">
+                <div class="form-label">Subtitle / Type *</div>
+                <input class="form-input" id="fSub" placeholder="e.g. LED Softlight">
+              </div>
+            </div>
+
+            <!-- Category + Watts -->
+            <div class="form-row">
+              <div class="form-field">
+                <div class="form-label">Category *</div>
+                <select class="form-select" id="fCat">
+                  <option value="lights">💡 Lights</option>
+                  <option value="grip">🦺 Grip</option>
+                  <option value="digital">🎛️ Digital / Power</option>
+                  <option value="expendables">📎 Expendables</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <div class="form-label">Power Draw (Watts)</div>
+                <input class="form-input" id="fWatts" type="number" placeholder="e.g. 400 (leave blank if N/A)">
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="form-field">
+              <div class="form-label">Description</div>
+              <textarea class="form-textarea" id="fDesc" rows="3" placeholder="Brief description of the equipment, its uses and characteristics…"></textarea>
+            </div>
+
+            <!-- Specs -->
+            <div class="form-field">
+              <div class="form-label">Specifications</div>
+              <div class="specs-editor" id="specsEditor"></div>
+              <button class="add-spec-btn" onclick="addSpecRow()">+ Add Spec Row</button>
+            </div>
+
+          </div><!-- /db-form-body -->
+          <div class="db-form-footer">
+            <button class="btn primary" onclick="saveItem()">💾 Save Item</button>
+            <button class="btn" onclick="duplicateItem()">⎘ Duplicate</button>
+            <div style="flex:1"></div>
+            <span class="save-status" id="saveStatus">✓ Saved</span>
+            <button class="btn danger" id="deleteItemBtn" onclick="deleteCurrentItem()" style="display:none">🗑 Delete</button>
+          </div>
+        </div><!-- /dbFormWrap -->
+      </div><!-- /db-form-col -->
+    </div><!-- /dbTabItems -->
+
+    <!-- KITS TAB -->
+    <div id="dbTabKits" style="display:none;flex:1;overflow:hidden;flex-direction:column;" class="db-body">
+      <!-- Left: kit list -->
+      <div class="db-list-col">
+        <div class="db-list-toolbar" style="justify-content:space-between;">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase;">Kits</span>
+          <button class="btn" style="font-size:10px;padding:4px 8px;" onclick="startNewKit()">+ New Kit</button>
+        </div>
+        <div class="db-item-list" id="dbKitList"></div>
+      </div>
+      <!-- Right: kit editor -->
+      <div class="db-form-col" id="dbKitFormCol">
+        <div class="db-empty-state" id="dbKitEmptyState">
+          <div class="es-icon">🎁</div>
+          <p>Create a <strong>Kit</strong> to bundle multiple pieces<br>of equipment into a single draggable unit.<br><br>
+          The tally will automatically expand<br>each kit into its individual items.</p>
+          <button class="btn primary" onclick="startNewKit()">+ Create First Kit</button>
+        </div>
+        <div id="dbKitFormWrap" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+          <div class="db-form-header">
+            <div class="db-form-title" id="dbKitFormTitle">New Kit</div>
+            <span id="dbKitNewBadge" class="db-new-badge" style="display:none">NEW</span>
+          </div>
+          <div class="kit-editor-wrap" id="kitEditorWrap">
+            <!-- Kit name + icon row -->
+            <div class="form-row" style="align-items:flex-end;">
+              <div class="form-field" style="flex:0 0 54px;">
+                <div class="form-label">Icon</div>
+                <input class="form-input" id="kfIcon" style="text-align:center;font-size:20px;padding:6px 4px;" maxlength="2" value="🎁" oninput="updateKitPreview()">
+              </div>
+              <div class="form-field" style="flex:2">
+                <div class="form-label">Kit Name *</div>
+                <input class="form-input" id="kfName" placeholder="e.g. Interview Lighting Kit" oninput="updateKitPreview()">
+              </div>
+              <div class="form-field" style="flex:1">
+                <div class="form-label">Short Label</div>
+                <input class="form-input" id="kfSub" placeholder="e.g. Interview Kit">
+              </div>
+            </div>
+
+            <!-- Live preview -->
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:16px;">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                <div style="width:52px;height:52px;border:1.5px solid rgba(124,92,191,0.4);border-radius:8px;background:rgba(124,92,191,0.06);display:flex;align-items:center;justify-content:center;font-size:28px;" id="kitPreviewIcon">🎁</div>
+                <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--accent);background:rgba(255,255,255,0.9);padding:1px 6px;border-radius:2px;white-space:nowrap;" id="kitPreviewLabel">New Kit</div>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:10px;color:var(--text3);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:6px;">CONTAINS</div>
+                <div id="kitPreviewChips" class="kit-summary-chips"></div>
+              </div>
+            </div>
+
+            <!-- Kit contents -->
+            <div class="form-field">
+              <div class="form-label">Kit Contents</div>
+              <div class="kit-contents-list" id="kitContentsList"></div>
+              <div class="kit-add-item-row" style="margin-top:8px;">
+                <select class="form-select" id="kitAddSelect">
+                  <option value="">— Add equipment to kit —</option>
+                </select>
+                <button class="btn" style="font-size:11px;padding:5px 10px;white-space:nowrap;" onclick="addItemToKit()">Add Item</button>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="form-field">
+              <div class="form-label">Kit Description (optional)</div>
+              <textarea class="form-textarea" id="kfDesc" rows="2" placeholder="Describe what this kit is used for..."></textarea>
+            </div>
+          </div>
+          <div class="db-form-footer">
+            <button class="btn primary" onclick="saveKit()">💾 Save Kit</button>
+            <div style="flex:1"></div>
+            <span class="save-status" id="kitSaveStatus">✓ Saved</span>
+            <button class="btn danger" id="deleteKitBtn" onclick="deleteCurrentKit()" style="display:none">🗑 Delete Kit</button>
+          </div>
+        </div>
+      </div>
+    </div><!-- /dbTabKits -->
+
+    <!-- Bottom bar -->
+    <div style="padding:8px 16px;border-top:1px solid var(--border);background:var(--surface2);display:flex;gap:8px;align-items:center;flex-shrink:0;">
+      <button class="btn primary" onclick="startNewItem()">+ Add New Item</button>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text3)" id="dbCount"></span>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="exportDBJSON()">↓ Export DB (JSON)</button>
+      <label class="btn" style="cursor:pointer;">↑ Import DB (JSON)<input type="file" accept=".json" style="display:none" onchange="importDBJSON(event)"></label>
+    </div>
+  </div>
+</div>
+
+<!-- FLOOR PLAN SCALE MODAL -->
+<div class="modal-overlay" id="scaleModal" onclick="closeScaleModalOutside(event)">
+  <div class="modal" style="width:480px;">
+    <button class="modal-close" onclick="closeScaleModal()">✕</button>
+    <div style="font-size:28px;margin-bottom:8px;">📐</div>
+    <div class="modal-name">Set Floor Plan Scale</div>
+    <div class="modal-cat" style="color:var(--text2);margin-bottom:18px;">Enter a known real-world dimension of the floor plan</div>
+
+    <!-- Units toggle at top -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:10px 14px;">
+      <span style="font-size:11px;color:var(--text2);flex:1;">Working units</span>
+      <div style="display:flex;background:var(--surface3);border-radius:3px;overflow:hidden;border:1px solid var(--border);">
+        <button id="scaleFtBtn" onclick="setScaleUnit('ft')"
+          style="padding:5px 16px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;border:none;cursor:pointer;background:var(--accent);color:white;transition:all 0.15s;">FT</button>
+        <button id="scaleMBtn" onclick="setScaleUnit('m')"
+          style="padding:5px 16px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;border:none;cursor:pointer;background:transparent;color:var(--text3);transition:all 0.15s;">M</button>
+      </div>
+    </div>
+
+    <!-- Dimension input row -->
+    <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;">
+      <div class="form-field" style="flex:1.6">
+        <div class="form-label">Real-world dimension</div>
+        <div style="display:flex;align-items:center;gap:0;">
+          <input class="form-input" id="scaleDimValue" type="number" min="0.1" step="0.5"
+            placeholder="e.g. 30"
+            style="font-size:20px;font-weight:600;flex:1;border-radius:2px 0 0 2px;"
+            oninput="livePreviewScale()">
+          <div style="background:var(--accent);color:white;padding:7px 12px;font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:700;border-radius:0 2px 2px 0;" id="scaleUnitBadge">ft</div>
+        </div>
+      </div>
+      <div class="form-field" style="flex:1">
+        <div class="form-label">Corresponds to</div>
+        <select class="form-select" id="scaleDimAxis" onchange="livePreviewScale()">
+          <option value="width">Width of floor plan (ft)</option>
+          <option value="height">Height of floor plan (ft)</option>
+        </select>
+      </div>
+      <input type="hidden" id="scaleDimUnits" value="ft">
+    </div>
+
+    <!-- Quick preset buttons -->
+    <div class="form-field" style="margin-bottom:14px;">
+      <div class="form-label">Common room sizes</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;" id="scalePresets"></div>
+    </div>
+
+    <!-- Live preview -->
+    <div id="scalePreview" style="min-height:22px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);padding:7px 12px;border-radius:3px;margin-bottom:16px;letter-spacing:0.5px;"></div>
+
+    <button class="btn primary" style="width:100%;padding:10px;font-size:13px;" onclick="confirmScale()">✓ Set Scale &amp; Show Ruler</button>
+    <div style="text-align:center;margin-top:10px;">
+      <button class="btn" style="font-size:11px;" onclick="closeScaleModal()">Skip for now</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// EQUIPMENT DATABASE
+// ============================================================
+const EQUIPMENT = [
+  // LIGHTS
+  { id:'arri-skypanel-s60', cat:'lights', icon:'💡', name:'ARRI SkyPanel S60-C', sub:'LED Softlight', desc:'Full-color LED soft light with exceptional color rendering. Ideal for interviews, talent lighting, and any situation requiring a large, soft, controllable source.', specs:{Power:'400W',Output:'1200W Tungsten Equiv.',CCT:'2,800–10,000K',CRI:'95+',Size:'60×30cm',Weight:'5.5kg',Mount:'Baby Spud'}, watts:400 },
+  { id:'arri-skypanel-s30', cat:'lights', icon:'💡', name:'ARRI SkyPanel S30-C', sub:'LED Softlight', desc:'Compact version of the SkyPanel family. Excellent for tight spaces, fill lights, or hair/rim situations where control is needed.', specs:{Power:'200W',Output:'575W Tungsten Equiv.',CCT:'2,800–10,000K',CRI:'95+',Size:'33×20cm',Weight:'3.2kg',Mount:'Baby Spud'}, watts:200 },
+  { id:'arri-m18', cat:'lights', icon:'🔦', name:'ARRI M18 HMI', sub:'HMI Fresnel', desc:'1800W HMI. A versatile workhorse for daylight exterior/interior. Punches through windows and provides a strong, directable source.', specs:{Power:'1800W',Output:'18,000 lm',CCT:'5600K',CRI:'90+',Beam:'14°–60°',Weight:'9.8kg',Mount:'Baby Spud'}, watts:1800 },
+  { id:'arri-m40', cat:'lights', icon:'🔦', name:'ARRI M40 HMI', sub:'HMI Fresnel', desc:'4000W open-face HMI. Used for large interior fill, exterior daylight simulation, or blasting through diffusion frames on location.', specs:{Power:'4000W',Output:'40,000 lm',CCT:'5600K',CRI:'90+',Beam:'Open',Weight:'14.2kg',Mount:'Junior Spud'}, watts:4000 },
+  { id:'litemat-4', cat:'lights', icon:'🟨', name:'Litemat Spectrum 4', sub:'LED Panel', desc:'Large-format RGBW LED panel. Ultra-soft output, lightweight for rigging overhead. Bi-color with hue/saturation control.', specs:{Power:'150W',CCT:'2700–6500K',CRI:'97',Size:'122×61cm',Weight:'3.6kg',Mount:'Speed Rail'}, watts:150 },
+  { id:'litemat-2', cat:'lights', icon:'🟨', name:'Litemat Spectrum 2L', sub:'LED Panel', desc:'Half-size RGBW LED panel. Great for eye light, fill, or practical window gag. Packs flat and rigs easily.', specs:{Power:'80W',CCT:'2700–6500K',CRI:'97',Size:'81×41cm',Weight:'1.8kg',Mount:'Speed Rail'}, watts:80 },
+  { id:'kino-celeb-450', cat:'lights', icon:'🟦', name:'Kino Flo Celeb 450', sub:'LED Softlight', desc:'DMX-controlled LED fixture producing a wide, soft, high-CRI source. Standard for interview setups and beauty work.', specs:{Power:'100W',CCT:'2700–6500K',CRI:'95+',Size:'112×35cm',Weight:'4.1kg',Mount:'Baby Spud'}, watts:100 },
+  { id:'kino-diva-lite', cat:'lights', icon:'🟦', name:'Kino Flo Diva-Lite 415', sub:'Fluorescent', desc:'Classic 4-bank fluorescent unit. Reliable soft source for video and film. Takes KF55 or KF32 tubes.', specs:{Power:'200W (4×50W)',CCT:'3200K/5500K',CRI:'95',Size:'89×28cm',Weight:'3.2kg',Mount:'Baby Spud'}, watts:200 },
+  { id:'nanlux-evoke-1200', cat:'lights', icon:'🔆', name:'Nanlux Evoke 1200', sub:'LED Spot', desc:'High-output LED spot. Point source approaching HMI quality. Used with Fresnel lens or reflectors for shaping.', specs:{Power:'1200W',Output:'12,600 lux @10m',CCT:'5600K',CRI:'96',Weight:'9.5kg',Mount:'Baby Spud'}, watts:1200 },
+  { id:'aputure-ls-c300d', cat:'lights', icon:'🔆', name:'Aputure LS C300d II', sub:'LED COB', desc:'Daylight COB LED with Bowens mount. Popular run-and-gun fixture for documentary and commercial work. High output for its size.', specs:{Power:'350W',Output:'80,000 lux @0.5m',CCT:'5500K',CRI:'96+',Weight:'4.6kg',Mount:'Bowens / Baby'}, watts:350 },
+  { id:'aputure-nova-p300c', cat:'lights', icon:'🟧', name:'Aputure NOVA P300C', sub:'RGBWW LED Panel', desc:'Large RGBWW soft panel with Sidus Link app control. Full color, high output, and very flat profile for overhead rigging.', specs:{Power:'300W',CCT:'2000–10,000K',CRI:'95+',Size:'59×59cm',Weight:'5kg',Mount:'Baby Spud'}, watts:300 },
+  { id:'dedolight-400', cat:'lights', icon:'🕯️', name:'Dedolight DLED4.1-D', sub:'LED Focus', desc:'Micro-focusing LED fixture for precise accent lighting, background hits, and kicker lights. Extremely controllable beam.', specs:{Power:'40W',CCT:'5600K',CRI:'95',Beam:'5°–50°',Weight:'0.6kg',Mount:'Baby Spud'}, watts:40 },
+  { id:'par-can-1k', cat:'lights', icon:'🔴', name:'1K Par Can', sub:'Tungsten PAR', desc:'Classic tungsten PAR 64 can. Used for hard, punchy backlights, color gels, and concert/music-video looks.', specs:{Power:'1000W',CCT:'3200K',CRI:'100',Beam:'10°–60° (lens)',Weight:'2.5kg',Mount:'Baby Spud'}, watts:1000 },
+  { id:'practical-bulb', cat:'lights', icon:'💛', name:'Practical / China Ball', sub:'Practical Fixture', desc:'Lightweight paper lantern with mogul socket. Used as ambient practicals, eye lights, and in-frame soft sources.', specs:{Power:'100–500W',CCT:'2700K (tungsten)',Diameter:'30–60cm',Weight:'0.3kg',Mount:'Speed Rail'}, watts:150 },
+  { id:'flex-cine', cat:'lights', icon:'🌟', name:'Flex Cine LED Mat', sub:'Flexible LED', desc:'Rollable RGBWW LED mat for wrapping columns, laying overhead, or seamless lighting surfaces.', specs:{Power:'200W',CCT:'2800–10,000K',CRI:'95',Size:'122×61cm',Weight:'1.2kg',Mount:'Tape/Frame'}, watts:200 },
+
+  // GRIP
+  { id:'matthews-c-stand', cat:'grip', icon:'🦺', name:'C-Stand 40"', sub:'Grip Stand', desc:'Standard 40" chrome knuckle C-stand. The fundamental unit of the grip department. Holds flags, nets, diffusion, and boom arms.', specs:{Height:'Max 2.4m',Load:'11kg',Base:'3-leg',Weight:'7.7kg',Extension:'1.2m boom'} },
+  { id:'baby-stand', cat:'grip', icon:'🪜', name:'Baby Stand', sub:'Light Stand', desc:'Compact low-mode light stand. Fits tight spaces and holds smaller LED units, practicals, or hair lights.', specs:{Height:'Max 1.5m',Load:'5kg',Base:'Tripod',Weight:'2.3kg',Spud:'Baby 5/8"'} },
+  { id:'combo-stand', cat:'grip', icon:'🪜', name:'Combo Stand', sub:'Light Stand', desc:'Heavy-duty hi-roller stand for larger fixtures. Essential for mounting big HMIs or rigging overhead work.', specs:{Height:'Max 4.5m',Load:'30kg',Base:'Crab',Weight:'12kg',Spud:'1-1/8"'} },
+  { id:'sandbag-25', cat:'grip', icon:'🧱', name:'Sandbag 25lb', sub:'Weight Bag', desc:'Standard vinyl sandbag for ballasting stands. Always use at least one per C-stand leg on the boom side.', specs:{Weight:'11.3kg',Material:'Vinyl',Fill:'Sand'} },
+  { id:'flag-set', cat:'grip', icon:'⬛', name:'Flag Set (4-way)', sub:'Cutter / Flag', desc:'Full set of black cinefoil flags in 18x24", 24x36", and cutters. Essential for controlling spill, blocking practicals, and creating shadow edges.', specs:{Sizes:'12x18",18x24",24x36"',Material:'Black cloth/steel frame',Mount:'C-Stand Arm'} },
+  { id:'silk-scrim', cat:'grip', icon:'◻️', name:'4x4 Silk', sub:'Diffusion Frame', desc:'4x4 foot butterfly silk. Used over lights or windows to reduce output by approximately 1.5 stops while softening the source.', specs:{Size:'4×4 ft',Material:'China silk',Reduction:'~1.5 stops',Mount:'Butterfly frame'} },
+  { id:'butterfly-6x6', cat:'grip', icon:'🔲', name:'6x6 Butterfly Frame', sub:'Grip Frame', desc:'Frame for 6x6 materials. Can hold solids, silks, open face nets, or grids overhead or as a large flag.', specs:{Size:'6×6 ft',Weight:'4.5kg',Material:'Aluminum',Mount:'Hi-roller'} },
+  { id:'duvatyne', cat:'grip', icon:'🟫', name:'Duvatyne Roll', sub:'Black Wrap', desc:'Black light-blocking fabric. Used to flag windows, mask light leaks, and create improvised flags on location.', specs:{Width:'60"',Material:'Cotton/Nylon',Roll:'15 yards'} },
+  { id:'apple-boxes', cat:'grip', icon:'📦', name:'Apple Box Set', sub:'Riser / Support', desc:'Full/half/quarter/pancake apple boxes. Elevate talent, position camera, and support fixtures at low angles.', specs:{Full:'50×25×20cm',Half:'50×25×10cm',Quarter:'50×25×5cm',Material:'Plywood'} },
+  { id:'speedrail-10', cat:'grip', icon:'📏', name:'Speed Rail 10ft', sub:'Pipe', desc:'Lightweight aluminum conduit. Used to rig LED mats overhead, build light rails, and create overhead frames.', specs:{Length:'10 ft / 3m',Diameter:'1.5"',Material:'Aluminum',Weight:'2.1kg'} },
+
+  // DIGITAL
+  { id:'dimmer-4ch', cat:'digital', icon:'🎛️', name:'4-Channel Dimmer', sub:'Dimmer/Control', desc:'4-channel 2400W dimmer pack. Essential for smoothly fading practical bulbs, tungsten instruments, and creating lighting looks that change over time.', specs:{Channels:'4',Load:'2400W total',Protocol:'DMX-512',Input:'L14-30'} },
+  { id:'dmx-controller', cat:'digital', icon:'🕹️', name:'DMX Lighting Board', sub:'Control Console', desc:'Portable DMX console for on-set fixture control. Programs scenes, chases, and can run a full rig off cues.', specs:{Universes:'2 (512ch ea)',Faders:'24',Output:'5-pin XLR',Weight:'2.5kg'} },
+  { id:'wireless-dmx', cat:'digital', icon:'📡', name:'Wireless DMX', sub:'Transmitter/Receiver', desc:'W-DMX or Lumen Radio wireless system. Eliminates cable runs for LED fixtures in practical locations or overhead rigs.', specs:{Protocol:'W-DMX / 2.4GHz',Range:'300m line-of-sight',Latency:'<1ms'} },
+  { id:'lsc-color-box', cat:'digital', icon:'🎨', name:'Color Box 5-Channel LED Driver', sub:'LED Driver', desc:'5-channel RGBWW LED driver box with DMX and standalone modes. Drives large LED tape or flex mat installations.', specs:{Channels:'5 (RGBWW)',Output:'5×10A',Protocol:'DMX-512',Input:'24–48V DC'} },
+  { id:'generator-12kw', cat:'digital', icon:'⚙️', name:'12kW Generator', sub:'Power', desc:'Portable 12kW three-phase generator. Standard location power for moderate fixture loads when no house power is available.', specs:{Output:'12,000W',Voltage:'240V / 120V',Fuel:'Diesel',Weight:'320kg',Noise:'65dB'} },
+  { id:'distro-100a', cat:'digital', icon:'🔌', name:'100A Distro Box', sub:'Power Distribution', desc:'3-phase 100A distribution box with multiple 60A and 30A outputs. Hub for all practical and fixture power on location.', specs:{Input:'100A 3-phase',Outputs:'4×60A, 6×20A',Standard:'L6-30, L14-30'} },
+  { id:'cable-run-100', cat:'digital', icon:'🔁', name:'25ft Stinger Cable', sub:'Extension Cord', desc:'Heavy-duty 12-gauge extension cord for running AC power to fixtures and dimmer units. Color-coded for easy identification.', specs:{Length:'25 ft / 7.6m',Gauge:'12 AWG',Rating:'20A/2400W'} },
+  { id:'color-meter', cat:'digital', icon:'📷', name:'Color/Light Meter', sub:'Measurement', desc:'Sekonic C-800 or similar spectroscopic meter. Reads footcandles, lux, color temperature, CRI, and TLCI simultaneously.', specs:{Range:'1–200,000 lux',Accuracy:'±2%',Display:'LCD touch',Modes:'Incident/Reflected'} },
+  { id:'monitor-reference', cat:'digital', icon:'🖥️', name:'Reference Monitor', sub:'On-Set Monitor', desc:'Calibrated 4K reference monitor (Flanders Scientific/SmallHD). Used by gaffer and DP to evaluate exposure and look.', specs:{Size:'24"',Resolution:'4K UHD',Gamut:'DCI-P3',Panel:'OLED',Input:'12G-SDI, HDMI'} },
+  { id:'follow-focus', cat:'digital', icon:'🎬', name:'Wireless Follow Focus', sub:'Camera Assist', desc:'Used by the gaffer to sync light cue triggers with camera operator marks. Also used for electronically controlled barn doors.', specs:{Protocol:'2.4GHz',Range:'100m',Torque:'Variable'} },
+
+  // EXPENDABLES
+  { id:'cinefoil-roll', cat:'expendables', icon:'🪙', name:'Cinefoil Roll', sub:'Black Wrap', desc:'3" wide black anodized aluminum foil. Mold into snoots, barndoors, custom flags, and control spill from small fixtures.', specs:{Width:'12"',Length:'50 ft',Material:'Anodized aluminum'} },
+  { id:'diffusion-grid', cat:'expendables', icon:'🌫️', name:'Rosco Diffusion Kit', sub:'Diffusion', desc:'Sample pack of Rosco diffusion materials: 250, 216, Grid Cloth, Soft Frost. Cut and gel in frames or directly on fixtures.', specs:{Sizes:'24×24" sheets',Materials:'216, 250, Grid, Soft Frost',Brand:'Rosco'} },
+  { id:'color-gels', cat:'expendables', icon:'🎨', name:'Gel Pack Assorted', sub:'Color Correction', desc:'Mixed gel pack including common CC and creative gels: CTO, CTB, Plus Green, Minus Green, various Rosco colors.', specs:{Includes:'CTO 1/8–Full, CTB 1/8–Full, Plus/Minus Green, Assorted',Size:'24×24"',Brand:'Rosco/Lee'} },
+  { id:'gaff-tape', cat:'expendables', icon:'🔷', name:'Gaffer Tape 2" Black', sub:'Tape', desc:'2" black cloth gaffers tape. The most essential expendable. Used for cable runs, securing fixtures, labeling, and a thousand other tasks.', specs:{Width:'2"',Roll:'55 yards',Adhesive:'Natural rubber',Brand:'Permacel'} },
+  { id:'clothespins', cat:'expendables', icon:'📎', name:'Clothespins (50 pack)', sub:'Clip', desc:'Wooden spring clothespins. Used to attach gels and diffusion to fixtures quickly. A gaffer never has enough of these.', specs:{Material:'Wood',Pack:'50 pc'} },
+  { id:'bungie-cord', cat:'expendables', icon:'🔗', name:'Bungee Cord Set', sub:'Rigging', desc:'Heavy-duty bungee cords for securing fixtures, cable ties, and quick rigging solutions on location.', specs:{Lengths:'12", 24", 36"',Pack:'12 per set',Hooks:'Steel S-hooks'} },
+  { id:'tie-line', cat:'expendables', icon:'🧵', name:'Tie Line (100ft)', sub:'Rigging', desc:'Braided nylon tie line. Standard for tying off cables overhead, securing light rigs, and managing wire runs.', specs:{Length:'100 ft',Diameter:'3/16"',Material:'Braided nylon',Load:'45kg'} },
+  { id:'sharpies', cat:'expendables', icon:'✏️', name:'Sharpie Markers', sub:'Label', desc:'Fine and ultra-fine Sharpies for labeling cables, marking stingers, annotating script pages.', specs:{Pack:'Fine + Ultra-fine',Colors:'Black, Red, Silver'} },
+  { id:'work-light', cat:'expendables', icon:'🔦', name:'LED Work Light', sub:'Utility', desc:'LED trouble light for dark locations, rigging in catwalks, and setting up before and after shooting.', specs:{Output:'1000 lm',Power:'AC cord 10ft',IP:'65 weather resistant'} },
+];
+
+const CAT_COLORS = { lights: 'var(--lights)', grip: 'var(--grip)', digital: 'var(--digital)', expendables: 'var(--expendables)' };
+const CAT_LABELS = { lights: 'Lights', grip: 'Grip', digital: 'Digital/Power', expendables: 'Expendables' };
+</script>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let canvasItems = [];
+let nextId = 1;
+let selectedId = null;
+let activeTool = 'select';
+let scale = 1;
+let draggingItem = null;
+let dragOffset = { x:0, y:0 };
+let undoStack = [];
+let arrows = [];
+let arrowStart = null;
+let currentArrow = null;
+let history = [];
+
+// ============================================================
+// RENDER SIDEBAR
+// ============================================================
+function renderEquipmentList(filter='') {
+  const container = document.getElementById('equipmentList');
+  const cats = ['lights','grip','digital','expendables'];
+  const fl = filter.toLowerCase();
+  let html = '';
+  cats.forEach(cat => {
+    const items = EQUIPMENT.filter(e => e.cat === cat && (
+      !fl || e.name.toLowerCase().includes(fl) || e.sub.toLowerCase().includes(fl)
+    ));
+    if (!items.length) return;
+    html += '<div class="category-header" onclick="toggleCategory(this)" data-cat="' + cat + '">' +
+      '<div class="category-dot" style="background:' + CAT_COLORS[cat] + '"></div>' +
+      '<span style="color:' + CAT_COLORS[cat] + '">' + CAT_LABELS[cat].toUpperCase() + '</span>' +
+      '<span class="category-count">' + items.length + '</span>' +
+      '<span class="category-arrow">▼</span>' +
+    '</div>' +
+    '<div class="category-items">';
+    items.forEach(item => {
+      const iconHtml = item.thumbData
+        ? '<div class="equip-icon"><img src="' + item.thumbData + '" style="width:24px;height:24px;object-fit:cover;border-radius:3px;vertical-align:middle;"></div>'
+        : '<div class="equip-icon">' + item.icon + '</div>';
+      html += '<div class="equip-item" draggable="true"' +
+        ' data-id="' + item.id + '"' +
+        ' style="border-left-color:' + CAT_COLORS[item.cat] + '"' +
+        ' ondragstart="onItemDragStart(event,\'' + item.id + '\')"' +
+        ' ondragend="onItemDragEnd(event)">' +
+        iconHtml +
+        '<div class="equip-info">' +
+          '<div class="equip-name">' + item.name + '</div>' +
+          '<div class="equip-sub">' + item.sub + '</div>' +
+        '</div>' +
+        '<button class="equip-info-btn" onclick="showInfo(\'' + item.id + '\');event.stopPropagation();">i</button>' +
+      '</div>';
+    });
+    html += '</div>';
+  });
+  if (!html) html = '<div class="no-results">No equipment found.</div>';
+  container.innerHTML = html;
+}
+
+function filterEquipment(val) { renderEquipmentList(val); }
+
+function toggleCategory(header) {
+  header.parentElement.classList.toggle('category-collapsed');
+}
+
+// ============================================================
+// DRAG FROM SIDEBAR
+// ============================================================
+let draggingEquipId = null;
+function onItemDragStart(e, id) {
+  draggingEquipId = id;
+  const ghost = document.getElementById('dragGhost');
+  const item = EQUIPMENT.find(x=>x.id===id);
+  if (item.thumbData) {
+    ghost.innerHTML = '<img src="' + item.thumbData + '" style="width:40px;height:40px;object-fit:cover;border-radius:5px;">';
+  } else {
+    ghost.textContent = item.icon;
+  }
+  ghost.style.display = 'block';
+  e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.setDragImage(new Image(), 0, 0);
+}
+function onItemDragEnd(e) {
+  document.getElementById('dragGhost').style.display='none';
+  document.querySelectorAll('.equip-item').forEach(el=>el.classList.remove('dragging'));
+}
+document.addEventListener('dragover', e => {
+  const g = document.getElementById('dragGhost');
+  g.style.left = e.clientX + 'px';
+  g.style.top = e.clientY + 'px';
+});
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+}
+
+// ============================================================
+// CANVAS ITEM RENDER
+// ============================================================
+function renderCanvasItem(ci, animate) {
+  const item = EQUIPMENT.find(x=>x.id===ci.equipId);
+  if (!item) return;
+  const canvas = document.getElementById('diagram-canvas');
+  const el = document.createElement('div');
+  el.className = 'canvas-item';
+  if (animate) el.classList.add('item-drop-in');
+  el.id = 'ci_' + ci.uid;
+  el.style.left = ci.x + 'px';
+  el.style.top = ci.y + 'px';
+  const iconHtml = item.thumbData
+    ? '<img src="' + item.thumbData + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3));">'
+    : '<div class="item-icon">' + item.icon + '</div>';
+  el.innerHTML =
+    '<div class="power-badge">' + (item.watts ? item.watts+'W' : '') + '</div>' +
+    iconHtml +
+    '<div class="item-label">' + item.name + '</div>' +
+    '<button class="item-delete" onclick="deleteItem(' + ci.uid + ')">✕</button>';
+  if (!item.watts) el.querySelector('.power-badge').style.display = 'none';
+  el.addEventListener('mousedown', function(ev) {
+    if (activeTool === 'select') {
+      ev.stopPropagation();
+      selectItem(ci.uid);
+      draggingItem = ci;
+      var rect = el.getBoundingClientRect();
+      var canvasEl = document.getElementById('diagram-canvas');
+      var cr = canvasEl.getBoundingClientRect();
+      dragOffset.x = ev.clientX - (ci.x * scale + cr.left);
+      dragOffset.y = ev.clientY - (ci.y * scale + cr.top);
+    } else if (activeTool === 'arrow') {
+      ev.stopPropagation();
+      arrowStart = { uid: ci.uid, el: el };
+    }
+  });
+  el.addEventListener('mouseup', function(ev) {
+    if (activeTool === 'arrow' && arrowStart && arrowStart.uid !== ci.uid) {
+      arrows.push({ from: arrowStart.uid, to: ci.uid });
+      arrowStart = null;
+      renderArrows();
+    }
+  });
+  canvas.appendChild(el);
+}
+
+function selectItem(uid) {
+  document.querySelectorAll('.canvas-item,.canvas-kit').forEach(el => el.classList.remove('selected'));
+  selectedId = uid;
+  if (uid !== null) {
+    const el = document.getElementById('ci_'+uid);
+    if (el) el.classList.add('selected');
+  }
+}
+
+function deleteItem(uid) {
+  pushHistory();
+  canvasItems = canvasItems.filter(x => x.uid !== uid);
+  arrows = arrows.filter(a => a.from !== uid && a.to !== uid);
+  const el = document.getElementById('ci_'+uid);
+  if (el) el.remove();
+  if (selectedId === uid) selectedId = null;
+  updateTally();
+  updateCanvasInfo();
+  renderArrows();
+}
+
+// ============================================================
+// MOUSE DRAG ON CANVAS
+// ============================================================
+let selBoxStart = null;
+function onCanvasMouseDown(e) {
+  if (activeTool === 'select') {
+    selectItem(null);
+    if (e.target.id === 'diagram-canvas' || e.target.id === 'arrow-svg') {
+      selBoxStart = { x: e.offsetX, y: e.offsetY };
+      const sb = document.getElementById('selectionBox');
+      sb.style.display = 'block';
+      sb.style.left = e.offsetX+'px';
+      sb.style.top = e.offsetY+'px';
+      sb.style.width = '0'; sb.style.height='0';
+    }
+  } else if (activeTool === 'text') {
+    addAnnotation(e.offsetX / scale, e.offsetY / scale);
+    setTool('select');
+  }
+}
+
+function onCanvasMouseMove(e) {
+  if (draggingItem && activeTool === 'select') {
+    const canvas = document.getElementById('diagram-canvas');
+    const cr = canvas.getBoundingClientRect();
+    const x = (e.clientX - cr.left - dragOffset.x) / scale;
+    const y = (e.clientY - cr.top - dragOffset.y) / scale;
+    draggingItem.x = Math.max(0, x);
+    draggingItem.y = Math.max(0, y);
+    const el = document.getElementById('ci_' + draggingItem.uid);
+    if (el) { el.style.left = draggingItem.x+'px'; el.style.top = draggingItem.y+'px'; }
+    renderArrows();
+  }
+  if (selBoxStart) {
+    const sb = document.getElementById('selectionBox');
+    const x = Math.min(e.offsetX, selBoxStart.x);
+    const y = Math.min(e.offsetY, selBoxStart.y);
+    sb.style.left = x+'px'; sb.style.top = y+'px';
+    sb.style.width = Math.abs(e.offsetX - selBoxStart.x)+'px';
+    sb.style.height = Math.abs(e.offsetY - selBoxStart.y)+'px';
+  }
+}
+
+function onCanvasMouseUp(e) {
+  draggingItem = null;
+  selBoxStart = null;
+  document.getElementById('selectionBox').style.display = 'none';
+  arrowStart = null;
+}
+
+// ============================================================
+// ANNOTATIONS
+// ============================================================
+function addAnnotation(x, y) {
+  const canvas = document.getElementById('diagram-canvas');
+  const el = document.createElement('div');
+  el.className = 'canvas-annotation';
+  el.style.left = x+'px';
+  el.style.top = y+'px';
+  const txt = document.createElement('span');
+  txt.className = 'annotation-text';
+  txt.contentEditable = true;
+  txt.textContent = 'Label';
+  el.appendChild(txt);
+  el.addEventListener('mousedown', function(ev) {
+    if (document.activeElement !== txt) {
+      ev.stopPropagation();
+      var cr = canvas.getBoundingClientRect();
+      var elRect = el.getBoundingClientRect();
+      var off = { x: ev.clientX - elRect.left, y: ev.clientY - elRect.top };
+      function mm(mev) {
+        var nx = (mev.clientX - cr.left - off.x) / scale;
+        var ny = (mev.clientY - cr.top - off.y) / scale;
+        el.style.left = nx+'px'; el.style.top = ny+'px';
+      }
+      function mu() { document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',mu); }
+      document.addEventListener('mousemove', mm);
+      document.addEventListener('mouseup', mu);
+    }
+  });
+  setTimeout(function() { txt.focus(); document.execCommand('selectAll'); }, 50);
+  canvas.appendChild(el);
+}
+
+// ============================================================
+// ARROWS
+// ============================================================
+function renderArrows() {
+  const svg = document.getElementById('arrow-svg');
+  svg.innerHTML = '<defs><marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="rgba(124,92,191,0.7)"/></marker></defs>';
+  arrows.forEach(a => {
+    const from = document.getElementById('ci_'+a.from);
+    const to = document.getElementById('ci_'+a.to);
+    if (!from || !to) return;
+    const canvas = document.getElementById('diagram-canvas');
+    const cr = canvas.getBoundingClientRect();
+    const fr = from.getBoundingClientRect();
+    const tr = to.getBoundingClientRect();
+    const x1 = fr.left + fr.width/2 - cr.left;
+    const y1 = fr.top + fr.height/2 - cr.top;
+    const x2 = tr.left + tr.width/2 - cr.left;
+    const y2 = tr.top + tr.height/2 - cr.top;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+    line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+    line.setAttribute('stroke','rgba(124,92,191,0.5)');
+    line.setAttribute('stroke-width','1.5');
+    line.setAttribute('marker-end','url(#ah)');
+    line.setAttribute('stroke-dasharray','4 3');
+    svg.appendChild(line);
+  });
+}
+
+// ============================================================
+// TOOLS
+// ============================================================
+function setTool(t) {
+  activeTool = t;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  const m = {select:'toolSelect', text:'toolText', arrow:'toolArrow'};
+  if (m[t]) document.getElementById(m[t]).classList.add('active');
+  document.getElementById('diagram-canvas').style.cursor = t === 'text' ? 'text' : t === 'arrow' ? 'crosshair' : 'default';
+}
+
+// ============================================================
+// ZOOM
+// ============================================================
+function zoom(factor) {
+  scale = Math.min(3, Math.max(0.3, scale * factor));
+  applyScale();
+}
+function resetZoom() { scale = 1; applyScale(); }
+
+function applyScale() {
+  const canvas = document.getElementById('diagram-canvas');
+  canvas.style.backgroundSize = 'cover, ' + (40*scale) + 'px ' + (40*scale) + 'px, ' + (40*scale) + 'px ' + (40*scale) + 'px';
+  canvasItems.forEach(ci => {
+    const el = document.getElementById('ci_'+ci.uid);
+    if (el) {
+      el.style.left = (ci.x*scale)+'px';
+      el.style.top  = (ci.y*scale)+'px';
+      el.style.transform = 'scale(' + scale + ')';
+      el.style.transformOrigin = 'top left';
+    }
+  });
+  updateCanvasInfo();
+  setTimeout(renderArrows, 50);
+  updateRuler();
+}
+
+// ============================================================
+// UNDO
+// ============================================================
+function pushHistory() {
+  history.push({ items: JSON.parse(JSON.stringify(canvasItems)), nextId: nextId });
+  if (history.length > 30) history.shift();
+}
+
+function undo() {
+  if (!history.length) return;
+  const state = history.pop();
+  canvasItems = state.items;
+  nextId = state.nextId;
+  document.getElementById('diagram-canvas').querySelectorAll('.canvas-item,.canvas-kit,.kit-cluster-label').forEach(el => el.remove());
+  canvasItems.forEach(ci => {
+    if (ci.equipId) renderCanvasItem(ci);
+  });
+  updateTally();
+  updateCanvasInfo();
+}
+
+// ============================================================
+// CANVAS INFO
+// ============================================================
+function updateCanvasInfo() {
+  document.getElementById('canvasInfo').textContent = 'items: ' + canvasItems.length + ' | zoom: ' + Math.round(scale*100) + '%';
+}
+
+// ============================================================
+// INFO MODAL
+// ============================================================
+function showInfo(id) {
+  const item = EQUIPMENT.find(x=>x.id===id);
+  if (!item) return;
+  const iconEl = document.getElementById('modalIcon');
+  if (item.thumbData) {
+    iconEl.innerHTML = '<img src="' + item.thumbData + '" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">';
+  } else {
+    iconEl.textContent = item.icon;
+  }
+  document.getElementById('modalName').textContent = item.name;
+  document.getElementById('modalCat').style.color = CAT_COLORS[item.cat];
+  document.getElementById('modalCat').textContent = CAT_LABELS[item.cat].toUpperCase() + ' — ' + item.sub;
+  document.getElementById('modalDesc').textContent = item.desc;
+  const specs = item.specs;
+  document.getElementById('modalSpecs').innerHTML = Object.entries(specs).map(function(pair) {
+    return '<div class="spec-item"><div class="spec-key">' + pair[0] + '</div><div class="spec-val">' + pair[1] + '</div></div>';
+  }).join('');
+  document.getElementById('infoModal').classList.add('open');
+}
+function closeInfoModal() { document.getElementById('infoModal').classList.remove('open'); }
+function closeModal(e) { if (e.target === document.getElementById('infoModal')) closeInfoModal(); }
+
+// ============================================================
+// CLEAR
+// ============================================================
+function clearCanvas() {
+  if (canvasItems.length === 0) return;
+  if (!confirm('Clear all items from the canvas?')) return;
+  pushHistory();
+  canvasItems = [];
+  arrows = [];
+  document.getElementById('diagram-canvas').querySelectorAll('.canvas-item,.canvas-annotation,.canvas-kit,.kit-cluster-label').forEach(el=>el.remove());
+  renderArrows();
+  updateTally();
+  updateCanvasInfo();
+}
+
+// ============================================================
+// EXPORT PRINT
+// ============================================================
+function exportDiagram() {
+  window.print();
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(el, panel) {
+  document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('equipmentPanel').style.display = panel === 'equipment' ? 'block' : 'none';
+  document.getElementById('kitsPanel').style.display = panel === 'kits' ? 'block' : 'none';
+  document.getElementById('notesPanel').style.display = panel === 'notes' ? 'flex' : 'none';
+  if (panel === 'kits') renderKitsSidebar();
+}
+
+// ============================================================
+// KEYBOARD
+// ============================================================
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable) return;
+    if (selectedId !== null) deleteItem(selectedId);
+  }
+  if ((e.ctrlKey||e.metaKey) && e.key==='z') undo();
+  if (e.key==='Escape') selectItem(null);
+});
+</script>
+
+<script>
+// ============================================================
+// FLOOR PLAN SYSTEM
+// ============================================================
+let floorPlan = {
+  loaded: false,
+  imgSrc: null,
+  opacity: 0.4,
+  pixelsPerUnit: null,
+  units: 'ft',
+  showRuler: true,
+  fittedW: 0,
+  fittedH: 0,
+};
+
+function handleFloorPlanUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    floorPlan.imgSrc = ev.target.result;
+    floorPlan.loaded = true;
+    const img = document.getElementById('floorPlanImg');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+    img.style.opacity = floorPlan.opacity;
+    img.onload = function() { fitFloorPlan(); };
+    document.getElementById('fpControlsBar').style.display = 'flex';
+    document.getElementById('fpUploadBtn').classList.add('fp-upload-btn-active');
+    floorPlan.pixelsPerUnit = null;
+    updateScaleDisplay();
+    setTimeout(openScaleModal, 200);
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function fitFloorPlan() {
+  const img = document.getElementById('floorPlanImg');
+  const canvas = document.getElementById('diagram-canvas');
+  const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const fit = Math.min(cw / iw, ch / ih) * 0.95;
+  floorPlan.fittedW = iw * fit;
+  floorPlan.fittedH = ih * fit;
+  img.style.width  = floorPlan.fittedW + 'px';
+  img.style.height = floorPlan.fittedH + 'px';
+  img.style.left   = ((cw - floorPlan.fittedW) / 2) + 'px';
+  img.style.top    = ((ch - floorPlan.fittedH) / 2) + 'px';
+  updateRuler();
+}
+
+function removeFloorPlan() {
+  floorPlan = { loaded:false, imgSrc:null, opacity:0.4, pixelsPerUnit:null, units:'ft', showRuler:true, fittedW:0, fittedH:0 };
+  const img = document.getElementById('floorPlanImg');
+  img.style.display = 'none'; img.src = '';
+  document.getElementById('fpControlsBar').style.display = 'none';
+  document.getElementById('fpSettingsBtn').style.display = 'none';
+  document.getElementById('fpUploadBtn').classList.remove('fp-upload-btn-active');
+  clearRuler();
+}
+
+function updateFloorPlanOpacity(val) {
+  floorPlan.opacity = val / 100;
+  document.getElementById('floorPlanImg').style.opacity = floorPlan.opacity;
+  document.getElementById('fpOpacityVal').textContent = val + '%';
+}
+
+function toggleUnits() {
+  setScaleUnit(floorPlan.units === 'ft' ? 'm' : 'ft');
+}
+
+function updateScaleDisplay() {
+  const el = document.getElementById('fpScaleDisplay');
+  if (!floorPlan.pixelsPerUnit) {
+    el.textContent = 'Not set';
+    el.style.color = 'var(--text3)';
+    return;
+  }
+  const ppu = floorPlan.units === 'ft'
+    ? floorPlan.pixelsPerUnit
+    : floorPlan.pixelsPerUnit / 3.28084;
+  el.textContent = '1 ' + floorPlan.units + ' = ' + ppu.toFixed(1) + 'px';
+  el.style.color = 'var(--accent)';
+}
+
+function setScaleUnit(u) {
+  floorPlan.units = u;
+  ['Ft','M'].forEach(function(x) {
+    var active = (u === x.toLowerCase());
+    ['scale' + x + 'Btn', 'fp' + x + 'Btn'].forEach(function(btnId) {
+      var btn = document.getElementById(btnId);
+      if (!btn) return;
+      btn.style.background = active ? 'var(--accent)' : 'transparent';
+      btn.style.color = active ? 'white' : 'var(--text3)';
+    });
+  });
+  var hiddenUnits = document.getElementById('scaleDimUnits');
+  if (hiddenUnits) hiddenUnits.value = u;
+  var badge = document.getElementById('scaleUnitBadge');
+  if (badge) badge.textContent = u;
+  updateScaleDisplay();
+  updateRuler();
+  syncScaleModalUnits();
+}
+
+function openScaleModal() {
+  syncScaleModalUnits();
+  buildPresetButtons();
+  document.getElementById('scaleModal').classList.add('open');
+  setTimeout(function() { document.getElementById('scaleDimValue').focus(); }, 100);
+}
+
+function closeScaleModal() {
+  document.getElementById('scaleModal').classList.remove('open');
+}
+
+function closeScaleModalOutside(e) {
+  if (e.target === document.getElementById('scaleModal')) closeScaleModal();
+}
+
+function syncScaleModalUnits() {
+  var u = floorPlan.units;
+  document.querySelectorAll('.scale-unit-label').forEach(function(el) { el.textContent = u; });
+  var axis = document.getElementById('scaleDimAxis');
+  if (axis) {
+    axis.querySelectorAll('option').forEach(function(opt) {
+      opt.textContent = opt.value === 'width'
+        ? 'Width of floor plan (' + u + ')'
+        : 'Height of floor plan (' + u + ')';
+    });
+  }
+  livePreviewScale();
+}
+
+function buildPresetButtons() {
+  var u = floorPlan.units;
+  var presets = u === 'ft'
+    ? [10, 15, 20, 25, 30, 40, 50, 60, 80, 100]
+    : [3, 5, 6, 8, 10, 12, 15, 18, 24, 30];
+  document.getElementById('scalePresets').innerHTML = presets.map(function(v) {
+    return '<button class="btn" style="font-size:10px;padding:3px 10px;" onclick="applyPreset(' + v + ')">' + v + ' ' + u + '</button>';
+  }).join('');
+}
+
+function applyPreset(val) {
+  document.getElementById('scaleDimValue').value = val;
+  livePreviewScale();
+}
+
+function livePreviewScale() {
+  var val = parseFloat(document.getElementById('scaleDimValue').value);
+  var axis = document.getElementById('scaleDimAxis').value;
+  var prev = document.getElementById('scalePreview');
+  if (!val || val <= 0 || !floorPlan.loaded) { prev.textContent = ''; return; }
+
+  var pixelSpan = axis === 'width' ? floorPlan.fittedW : floorPlan.fittedH;
+  var units = floorPlan.units;
+  var pxPerUnit = pixelSpan / val;
+  var pxPerFt = units === 'ft' ? pxPerUnit : pxPerUnit * 3.28084;
+  var pxPer5 = (pxPerFt * 5).toFixed(0);
+
+  prev.innerHTML =
+    '<span style="color:var(--accent)">1 ' + units + ' = ' + pxPerUnit.toFixed(1) + 'px</span>' +
+    '&ensp;·&ensp;5 ' + units + ' = ' + pxPer5 + 'px' +
+    '&ensp;·&ensp;' + val.toFixed(0) + ' ' + units + ' across';
+}
+
+function confirmScale() {
+  var val = parseFloat(document.getElementById('scaleDimValue').value);
+  var axis = document.getElementById('scaleDimAxis').value;
+  if (!val || val <= 0) {
+    document.getElementById('scaleDimValue').focus();
+    document.getElementById('scaleDimValue').style.borderColor = 'var(--expendables)';
+    setTimeout(function() { document.getElementById('scaleDimValue').style.borderColor = ''; }, 1200);
+    return;
+  }
+  var pixelSpan = axis === 'width' ? floorPlan.fittedW : floorPlan.fittedH;
+  var pxPerUnit = pixelSpan / val;
+  floorPlan.units = document.getElementById('scaleDimUnits').value;
+  floorPlan.pixelsPerUnit = floorPlan.units === 'ft' ? pxPerUnit : pxPerUnit * 3.28084;
+  closeScaleModal();
+  updateScaleDisplay();
+  updateRuler();
+}
+
+// ── RULER ───────────────────────────────────────────────────
+function toggleRuler(on) {
+  floorPlan.showRuler = on;
+  if (!on) clearRuler(); else updateRuler();
+}
+
+function clearRuler() {
+  document.getElementById('rulerSvg').innerHTML = '';
+}
+
+function updateRuler() {
+  var svg = document.getElementById('rulerSvg');
+  svg.innerHTML = '';
+  if (!floorPlan.showRuler || !floorPlan.pixelsPerUnit) return;
+  var canvas = document.getElementById('diagram-canvas');
+  var W = canvas.offsetWidth, H = canvas.offsetHeight;
+  var ppu = (floorPlan.units === 'ft' ? floorPlan.pixelsPerUnit : floorPlan.pixelsPerUnit / 3.28084) * scale;
+  var RW = 22;
+
+  var ns = 'http://www.w3.org/2000/svg';
+  function rect(x, y, w, h, fill, stroke) {
+    var r = document.createElementNS(ns, 'rect');
+    r.setAttribute('x',x); r.setAttribute('y',y);
+    r.setAttribute('width',w); r.setAttribute('height',h);
+    r.setAttribute('fill', fill);
+    if (stroke) { r.setAttribute('stroke', stroke); r.setAttribute('stroke-width','0.5'); }
+    return r;
+  }
+  function line(x1,y1,x2,y2,stroke,sw) {
+    var l = document.createElementNS(ns,'line');
+    l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('stroke',stroke); l.setAttribute('stroke-width',sw||1);
+    return l;
+  }
+  function text(x,y,content,anchor,size,fill) {
+    var t = document.createElementNS(ns,'text');
+    t.setAttribute('x',x); t.setAttribute('y',y);
+    t.setAttribute('text-anchor',anchor||'start');
+    t.setAttribute('font-family','Share Tech Mono,monospace');
+    t.setAttribute('font-size',size||8); t.setAttribute('fill',fill||'rgba(107,94,138,0.75)');
+    t.textContent = content;
+    return t;
+  }
+
+  svg.appendChild(rect(RW, 0, W-RW, RW, 'rgba(237,233,246,0.9)', 'rgba(208,200,232,0.5)'));
+  svg.appendChild(rect(0, RW, RW, H-RW, 'rgba(237,233,246,0.9)', 'rgba(208,200,232,0.5)'));
+  svg.appendChild(rect(0, 0, RW, RW, 'rgba(124,92,191,0.12)'));
+  svg.appendChild(text(RW/2, RW/2+3, floorPlan.units, 'middle', 7, 'rgba(124,92,191,0.7)'));
+
+  var majorEvery = 1;
+  if (ppu < 10) majorEvery = 10;
+  else if (ppu < 20) majorEvery = 5;
+  else if (ppu < 50) majorEvery = 5;
+  else majorEvery = 1;
+
+  function drawAxis(horiz) {
+    var total = horiz ? W : H;
+    var maxUnits = Math.ceil(total / ppu) + 2;
+    for (var u = 0; u <= maxUnits; u++) {
+      var pos = RW + u * ppu;
+      if (pos > total) break;
+      var isMajor = u % majorEvery === 0;
+      var tLen = isMajor ? RW * 0.65 : RW * 0.32;
+      var stroke2 = isMajor ? 'rgba(124,92,191,0.55)' : 'rgba(124,92,191,0.25)';
+      if (horiz) {
+        svg.appendChild(line(pos, RW, pos, RW - tLen, stroke2, isMajor ? 1 : 0.75));
+        if (isMajor && u > 0) svg.appendChild(text(pos+2, RW-tLen-1, u, 'start', 7));
+      } else {
+        svg.appendChild(line(RW, pos, RW - tLen, pos, stroke2, isMajor ? 1 : 0.75));
+        if (isMajor && u > 0) svg.appendChild(text(RW-tLen-2, pos-1, u, 'end', 7));
+      }
+    }
+  }
+  drawAxis(true);
+  drawAxis(false);
+}
+
+function openFloorPlanPanel() { openScaleModal(); }
+</script>
+
+<script>
+// ============================================================
+// DB EDITOR — EMOJI LIST
+// ============================================================
+var EMOJI_PRESETS = ['💡','🔦','🟨','🟦','🔆','🟧','🕯️','💛','🌟','🔴','⚡','🎬','📷',
+  '🎛️','🕹️','📡','🎨','⚙️','📏','🧱','⬛','◻️','🔲','🟫','🪙',
+  '🌫️','📎','🔷','🧵','✏️','🔦','🔗','🗜️','🪝','🔩'];
+
+var CAT_COLORS_DB = { lights:'#e07b1a', grip:'#0ea5a0', digital:'#7c5cbf', expendables:'#dc4f4f' };
+var CAT_LABELS_DB = { lights:'Lights', grip:'Grip', digital:'Digital/Power', expendables:'Expendables' };
+
+var editingId = null;
+var currentThumbData = null;
+
+// ============================================================
+// OPEN / CLOSE
+// ============================================================
+function openDBEditor(tab) {
+  document.getElementById('dbOverlay').classList.add('open');
+  updateDBCount();
+  if (tab === 'kits') {
+    switchDBTab('kits');
+  } else {
+    switchDBTab('items');
+    renderDBList();
+    renderEmojiRow('💡');
+  }
+}
+
+function closeDBEditor() {
+  document.getElementById('dbOverlay').classList.remove('open');
+  renderEquipmentList(document.getElementById('searchInput').value);
+}
+
+// ============================================================
+// DB TAB SWITCHING
+// ============================================================
+function switchDBTab(tab) {
+  document.getElementById('dbTabItems').style.display = tab === 'items' ? 'flex' : 'none';
+  document.getElementById('dbTabKits').style.display = tab === 'kits' ? 'flex' : 'none';
+  document.getElementById('dbNavItems').classList.toggle('active', tab === 'items');
+  document.getElementById('dbNavKits').classList.toggle('active', tab === 'kits');
+  if (tab === 'kits') renderDBKitList();
+}
+
+// ============================================================
+// RENDER ITEM LIST
+// ============================================================
+function renderDBList() {
+  var search = document.getElementById('dbSearch').value.toLowerCase();
+  var catF = document.getElementById('dbCatFilter').value;
+  var list = document.getElementById('dbItemList');
+  var cats = ['lights','grip','digital','expendables'];
+  var html = '';
+  cats.forEach(function(cat) {
+    if (catF && catF !== cat) return;
+    var items = EQUIPMENT.filter(function(e) {
+      return e.cat === cat && (!search || e.name.toLowerCase().includes(search) || e.sub.toLowerCase().includes(search));
+    });
+    if (!items.length) return;
+    html += '<div style="padding:6px 12px 2px;font-family:\'Barlow Condensed\',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:' + CAT_COLORS_DB[cat] + ';background:var(--surface2);border-bottom:1px solid var(--border);">' + CAT_LABELS_DB[cat] + '</div>';
+    items.forEach(function(item) {
+      var active = editingId === item.id ? 'active' : '';
+      var thumb = item.thumbData
+        ? '<img src="' + item.thumbData + '" alt="">'
+        : '<span>' + item.icon + '</span>';
+      html += '<div class="db-item-row ' + active + '" onclick="editItem(\'' + item.id + '\')">' +
+        '<div class="di-thumb">' + thumb + '</div>' +
+        '<div class="di-info">' +
+          '<div class="di-name">' + item.name + '</div>' +
+          '<div class="di-sub">' + item.sub + '</div>' +
+        '</div>' +
+        '<button class="di-del" onclick="deleteDBItem(\'' + item.id + '\',event)" title="Delete">✕</button>' +
+      '</div>';
+    });
+  });
+  if (!html) html = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;">No items found.</div>';
+  list.innerHTML = html;
+}
+
+// ============================================================
+// EDIT EXISTING ITEM
+// ============================================================
+function editItem(id) {
+  editingId = id;
+  var item = EQUIPMENT.find(function(e) { return e.id === id; });
+  if (!item) return;
+  showForm();
+  document.getElementById('dbFormTitle').textContent = item.name;
+  document.getElementById('dbNewBadge').style.display = 'none';
+  document.getElementById('deleteItemBtn').style.display = 'block';
+
+  document.getElementById('fName').value = item.name;
+  document.getElementById('fSub').value = item.sub;
+  document.getElementById('fCat').value = item.cat;
+  document.getElementById('fWatts').value = item.watts || '';
+  document.getElementById('fDesc').value = item.desc || '';
+
+  currentThumbData = item.thumbData || null;
+  refreshThumbPreview(item.icon, currentThumbData);
+  renderEmojiRow(item.icon);
+  document.getElementById('customEmoji').value = item.icon;
+
+  renderSpecsEditor(item.specs || {});
+  renderDBList();
+}
+
+// ============================================================
+// NEW ITEM
+// ============================================================
+function startNewItem() {
+  editingId = null;
+  currentThumbData = null;
+  showForm();
+  document.getElementById('dbFormTitle').textContent = 'New Item';
+  document.getElementById('dbNewBadge').style.display = 'inline';
+  document.getElementById('deleteItemBtn').style.display = 'none';
+  document.getElementById('fName').value = '';
+  document.getElementById('fSub').value = '';
+  document.getElementById('fCat').value = 'lights';
+  document.getElementById('fWatts').value = '';
+  document.getElementById('fDesc').value = '';
+  renderEmojiRow('💡');
+  document.getElementById('customEmoji').value = '💡';
+  refreshThumbPreview('💡', null);
+  renderSpecsEditor({});
+  renderDBList();
+}
+
+function showForm() {
+  document.getElementById('dbEmptyState').style.display = 'none';
+  document.getElementById('dbFormWrap').style.display = 'flex';
+}
+
+// ============================================================
+// EMOJI
+// ============================================================
+function renderEmojiRow(selected) {
+  var row = document.getElementById('emojiRow');
+  row.innerHTML = EMOJI_PRESETS.map(function(e) {
+    return '<div class="emoji-opt ' + (e===selected?'selected':'') + '" onclick="selectEmoji(\'' + e + '\')">' + e + '</div>';
+  }).join('');
+}
+function selectEmoji(e) {
+  document.getElementById('customEmoji').value = e;
+  renderEmojiRow(e);
+  if (!currentThumbData) {
+    document.getElementById('thumbEmoji').textContent = e;
+  }
+}
+function setEmojiFromInput(val) {
+  if (!val) return;
+  renderEmojiRow(val);
+  if (!currentThumbData) {
+    document.getElementById('thumbEmoji').textContent = val;
+  }
+}
+
+// ============================================================
+// THUMBNAIL
+// ============================================================
+function handleThumbUpload(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 2*1024*1024) { alert('Image must be under 2MB'); return; }
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    currentThumbData = ev.target.result;
+    refreshThumbPreview(getCurrentEmoji(), currentThumbData);
+  };
+  reader.readAsDataURL(file);
+}
+function clearThumb() {
+  currentThumbData = null;
+  document.getElementById('thumbFileInput').value = '';
+  refreshThumbPreview(getCurrentEmoji(), null);
+}
+function refreshThumbPreview(emoji, thumbData) {
+  var preview = document.getElementById('thumbPreview');
+  var emojiSpan = document.getElementById('thumbEmoji');
+  if (thumbData) {
+    emojiSpan.style.display = 'none';
+    var oldImg = preview.querySelector('img.thumb-img');
+    if (oldImg) oldImg.remove();
+    var img = document.createElement('img');
+    img.className = 'thumb-img';
+    img.src = thumbData;
+    img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:5px;';
+    preview.insertBefore(img, preview.querySelector('.thumb-overlay'));
+  } else {
+    var oldImg2 = preview.querySelector('img.thumb-img');
+    if (oldImg2) oldImg2.remove();
+    emojiSpan.style.display = 'block';
+    emojiSpan.textContent = emoji;
+  }
+}
+function getCurrentEmoji() {
+  return document.getElementById('customEmoji').value || '💡';
+}
+
+// ============================================================
+// SPECS EDITOR
+// ============================================================
+function renderSpecsEditor(specs) {
+  var container = document.getElementById('specsEditor');
+  container.innerHTML = '';
+  Object.entries(specs).forEach(function(pair) { addSpecRow(pair[0], pair[1]); });
+}
+function addSpecRow(key, val) {
+  if (key === undefined) key = '';
+  if (val === undefined) val = '';
+  var container = document.getElementById('specsEditor');
+  var row = document.createElement('div');
+  row.className = 'spec-row';
+  row.innerHTML =
+    '<input class="form-input spec-key-input" placeholder="Key (e.g. Power)" value="' + escHtml(key) + '" style="flex:0 0 110px;">' +
+    '<input class="form-input spec-val-input" placeholder="Value (e.g. 400W)" value="' + escHtml(val) + '">' +
+    '<button class="spec-del" onclick="this.parentElement.remove()" title="Remove">✕</button>';
+  container.appendChild(row);
+}
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ============================================================
+// SAVE ITEM
+// ============================================================
+function saveItem() {
+  var name = document.getElementById('fName').value.trim();
+  var sub = document.getElementById('fSub').value.trim();
+  var cat = document.getElementById('fCat').value;
+  var watts = parseInt(document.getElementById('fWatts').value) || null;
+  var desc = document.getElementById('fDesc').value.trim();
+  var icon = getCurrentEmoji();
+
+  if (!name) { document.getElementById('fName').focus(); alert('Name is required.'); return; }
+  if (!sub) { document.getElementById('fSub').focus(); alert('Subtitle is required.'); return; }
+
+  var specs = {};
+  document.querySelectorAll('#specsEditor .spec-row').forEach(function(row) {
+    var k = row.querySelector('.spec-key-input').value.trim();
+    var v = row.querySelector('.spec-val-input').value.trim();
+    if (k && v) specs[k] = v;
+  });
+
+  if (editingId) {
+    var idx = EQUIPMENT.findIndex(function(e) { return e.id === editingId; });
+    if (idx > -1) {
+      EQUIPMENT[idx] = Object.assign({}, EQUIPMENT[idx], { name:name, sub:sub, cat:cat, icon:icon, desc:desc, specs:specs });
+      if (watts) EQUIPMENT[idx].watts = watts; else delete EQUIPMENT[idx].watts;
+      if (currentThumbData) EQUIPMENT[idx].thumbData = currentThumbData;
+      else delete EQUIPMENT[idx].thumbData;
+    }
+    document.getElementById('dbFormTitle').textContent = name;
+  } else {
+    var id = 'custom-' + Date.now();
+    var newItem = { id:id, cat:cat, icon:icon, name:name, sub:sub, desc:desc, specs:specs };
+    if (watts) newItem.watts = watts;
+    if (currentThumbData) newItem.thumbData = currentThumbData;
+    EQUIPMENT.push(newItem);
+    editingId = id;
+    document.getElementById('dbNewBadge').style.display = 'none';
+    document.getElementById('deleteItemBtn').style.display = 'block';
+    document.getElementById('dbFormTitle').textContent = name;
+  }
+
+  saveDBToStorage();
+  renderDBList();
+  updateDBCount();
+  flashSaved();
+}
+
+function flashSaved() {
+  var s = document.getElementById('saveStatus');
+  s.classList.add('show');
+  setTimeout(function() { s.classList.remove('show'); }, 2000);
+}
+
+// ============================================================
+// DELETE
+// ============================================================
+function deleteCurrentItem() {
+  if (!editingId) return;
+  if (!confirm('Delete this item from the database? Items already on the canvas will remain.')) return;
+  deleteDBItem(editingId, null);
+  editingId = null;
+  document.getElementById('dbEmptyState').style.display = 'flex';
+  document.getElementById('dbFormWrap').style.display = 'none';
+}
+function deleteDBItem(id, e) {
+  if (e) { e.stopPropagation(); if (!confirm('Delete this item?')) return; }
+  var idx = EQUIPMENT.findIndex(function(x) { return x.id === id; });
+  if (idx > -1) EQUIPMENT.splice(idx, 1);
+  if (editingId === id) {
+    editingId = null;
+    document.getElementById('dbEmptyState').style.display = 'flex';
+    document.getElementById('dbFormWrap').style.display = 'none';
+  }
+  saveDBToStorage();
+  renderDBList();
+  updateDBCount();
+}
+
+// ============================================================
+// DUPLICATE
+// ============================================================
+function duplicateItem() {
+  if (!editingId) return;
+  var orig = EQUIPMENT.find(function(e) { return e.id === editingId; });
+  if (!orig) return;
+  var copy = JSON.parse(JSON.stringify(orig));
+  copy.id = 'custom-' + Date.now();
+  copy.name = copy.name + ' (Copy)';
+  EQUIPMENT.push(copy);
+  saveDBToStorage();
+  editItem(copy.id);
+  updateDBCount();
+}
+
+// ============================================================
+// STORAGE PERSISTENCE
+// ============================================================
+function saveDBToStorage() {
+  try { localStorage.setItem('gafferDiagram_db', JSON.stringify(EQUIPMENT)); } catch(e) {}
+}
+function loadDBFromStorage() {
+  try {
+    var saved = localStorage.getItem('gafferDiagram_db');
+    if (saved) {
+      var parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length) {
+        EQUIPMENT.length = 0;
+        parsed.forEach(function(e) { EQUIPMENT.push(e); });
+      }
+    }
+  } catch(e) {}
+}
+
+// ============================================================
+// EXPORT / IMPORT JSON
+// ============================================================
+function exportDBJSON() {
+  var json = JSON.stringify(EQUIPMENT, null, 2);
+  var a = document.createElement('a');
+  a.href = 'data:application/json,' + encodeURIComponent(json);
+  a.download = 'gaffer-equipment-database.json';
+  a.click();
+}
+function importDBJSON(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      var data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error('Invalid format');
+      if (!confirm('Import ' + data.length + ' items? This will replace the current database.')) return;
+      EQUIPMENT.length = 0;
+      data.forEach(function(item) { EQUIPMENT.push(item); });
+      saveDBToStorage();
+      renderDBList();
+      updateDBCount();
+      renderEquipmentList();
+      alert('Database imported successfully!');
+    } catch(err) { alert('Invalid JSON file: ' + err.message); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+</script>
+
+<script>
+// ============================================================
+// KITS DATABASE
+// ============================================================
+var KITS = [
+  {
+    id: 'kit-interview',
+    icon: '🎬',
+    name: 'Interview Lighting Kit',
+    sub: 'Interview Kit',
+    desc: 'Standard 3-point interview setup.',
+    contents: [
+      { equipId: 'kino-celeb-450', qty: 1 },
+      { equipId: 'arri-skypanel-s30', qty: 1 },
+      { equipId: 'dedolight-400', qty: 1 },
+      { equipId: 'matthews-c-stand', qty: 3 },
+      { equipId: 'sandbag-25', qty: 3 },
+      { equipId: 'gaff-tape', qty: 1 },
+    ]
+  },
+  {
+    id: 'kit-run-gun',
+    icon: '🎥',
+    name: 'Run & Gun Package',
+    sub: 'Doc Kit',
+    desc: 'Minimal doc-style lighting for fast-paced shooting.',
+    contents: [
+      { equipId: 'aputure-ls-c300d', qty: 1 },
+      { equipId: 'litemat-2', qty: 1 },
+      { equipId: 'baby-stand', qty: 2 },
+      { equipId: 'sandbag-25', qty: 2 },
+      { equipId: 'diffusion-grid', qty: 1 },
+      { equipId: 'gaff-tape', qty: 1 },
+    ]
+  }
+];
+
+// ============================================================
+// KIT SIDEBAR RENDERING
+// ============================================================
+function renderKitsSidebar() {
+  var list = document.getElementById('kitsList');
+  var empty = document.getElementById('kitsEmpty');
+  if (!KITS.length) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  list.innerHTML = KITS.map(function(kit) {
+    var totalUnits = kit.contents.reduce(function(s, c) { return s + c.qty; }, 0);
+    var previewIcons = kit.contents.slice(0, 3).map(function(c) {
+      var eq = EQUIPMENT.find(function(e) { return e.id === c.equipId; });
+      return eq ? eq.icon : '?';
+    }).join(' ');
+    return '<div class="equip-item kit-item" draggable="true"' +
+      ' style="border-left-color:var(--accent);border-left-width:2px;"' +
+      ' ondragstart="onKitDragStart(event,\'' + kit.id + '\')"' +
+      ' ondragend="onItemDragEnd(event)">' +
+      '<div class="equip-icon" style="font-size:20px;">' + kit.icon + '</div>' +
+      '<div class="equip-info">' +
+        '<div class="equip-name" style="display:flex;align-items:center;gap:5px;">' +
+          kit.name +
+          ' <span class="kit-badge">KIT</span>' +
+        '</div>' +
+        '<div class="equip-sub">' + totalUnits + ' items · ' + previewIcons + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ============================================================
+// KIT DRAG FROM SIDEBAR
+// ============================================================
+var draggingKitId = null;
+function onKitDragStart(e, kitId) {
+  draggingKitId = kitId;
+  draggingEquipId = null;
+  var kit = KITS.find(function(k) { return k.id === kitId; });
+  var ghost = document.getElementById('dragGhost');
+  ghost.textContent = kit.icon;
+  ghost.style.display = 'block';
+  e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.setDragImage(new Image(), 0, 0);
+}
+
+// ============================================================
+// onDrop — HANDLES BOTH EQUIPMENT AND KITS
+// ============================================================
+function onDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+
+  if (draggingKitId) {
+    var kit = KITS.find(function(k) { return k.id === draggingKitId; });
+    if (!kit) { draggingKitId = null; return; }
+    var canvas = document.getElementById('diagram-canvas');
+    var rect = canvas.getBoundingClientRect();
+    var dropX = (e.clientX - rect.left) / scale - 40;
+    var dropY = (e.clientY - rect.top) / scale - 40;
+    pushHistory();
+    dropKitExpanded(kit, dropX, dropY);
+    draggingKitId = null;
+    return;
+  }
+
+  if (!draggingEquipId) return;
+  var item = EQUIPMENT.find(function(x) { return x.id === draggingEquipId; });
+  if (!item) return;
+  var canvas2 = document.getElementById('diagram-canvas');
+  var rect2 = canvas2.getBoundingClientRect();
+  var x = (e.clientX - rect2.left) / scale - 40;
+  var y = (e.clientY - rect2.top) / scale - 40;
+  pushHistory();
+  var ci = { uid: nextId++, equipId: item.id, x: x, y: y };
+  canvasItems.push(ci);
+  renderCanvasItem(ci);
+  updateTally();
+  updateCanvasInfo();
+  draggingEquipId = null;
+}
+
+// ============================================================
+// DROP KIT — expand into individual icons in a labeled cluster
+// ============================================================
+function dropKitExpanded(kit, dropX, dropY) {
+  var slots = [];
+  kit.contents.forEach(function(c) {
+    for (var q = 0; q < c.qty; q++) slots.push(c.equipId);
+  });
+
+  var total = slots.length;
+  if (!total) return;
+
+  var COLS = Math.min(total, 5);
+  var SPACING_X = 82;
+  var SPACING_Y = 86;
+  var totalW = (Math.min(total, COLS) - 1) * SPACING_X;
+  var startX = dropX - totalW / 2;
+
+  var canvas = document.getElementById('diagram-canvas');
+
+  slots.forEach(function(equipId, idx) {
+    var col = idx % COLS;
+    var row = Math.floor(idx / COLS);
+    var nx = startX + col * SPACING_X;
+    var ny = dropY + row * SPACING_Y;
+    var ci = { uid: nextId++, equipId: equipId, x: nx, y: ny, kitGroup: kit.id };
+    canvasItems.push(ci);
+    renderCanvasItem(ci, true);
+  });
+
+  var labelEl = document.createElement('div');
+  labelEl.className = 'kit-cluster-label';
+  labelEl.style.left = (startX - 6) + 'px';
+  labelEl.style.top = (dropY - 28) + 'px';
+  labelEl.innerHTML =
+    '<span class="kit-cluster-icon">' + kit.icon + '</span>' +
+    '<span class="kit-cluster-name">' + kit.name + '</span>' +
+    '<span class="kit-cluster-count">' + total + ' items</span>';
+  labelEl.dataset.kitGroup = kit.id;
+  canvas.appendChild(labelEl);
+
+  updateTally();
+  updateCanvasInfo();
+}
+
+// ============================================================
+// TALLY
+// ============================================================
+function updateTally() {
+  var counts = {};
+  var kitGroupCounts = {};
+
+  canvasItems.forEach(function(ci) {
+    if (ci.equipId) {
+      counts[ci.equipId] = (counts[ci.equipId] || 0) + 1;
+    }
+    if (ci.kitGroup) {
+      kitGroupCounts[ci.kitGroup] = (kitGroupCounts[ci.kitGroup] || 0) + 1;
+    }
+  });
+
+  var container = document.getElementById('tallyList');
+  var cats = ['lights', 'grip', 'digital', 'expendables'];
+  var html = '';
+  var total = 0;
+  var totalWatts = 0;
+
+  if (Object.keys(kitGroupCounts).length) {
+    html += '<div class="tally-category"><div class="category-dot" style="background:var(--accent)"></div><span style="color:var(--accent)">From Kits</span></div>';
+    Object.entries(kitGroupCounts).forEach(function(pair) {
+      var kitId = pair[0], unitCount = pair[1];
+      var kit = KITS.find(function(k) { return k.id === kitId; });
+      if (!kit) return;
+      html += '<div class="tally-item" style="opacity:0.7;">' +
+        '<div class="tally-icon">' + kit.icon + '</div>' +
+        '<div class="tally-name" style="font-size:10px;font-style:italic;">' + kit.name + '</div>' +
+        '<div class="tally-qty" style="font-size:10px;">×' + unitCount + ' pcs</div>' +
+      '</div>';
+    });
+    html += '<div style="height:6px;border-bottom:1px dashed var(--border);margin:0 14px 6px;"></div>';
+  }
+
+  cats.forEach(function(cat) {
+    var catItems = Object.entries(counts).filter(function(pair) {
+      var e = EQUIPMENT.find(function(x) { return x.id === pair[0]; });
+      return e && e.cat === cat;
+    });
+    if (!catItems.length) return;
+    html += '<div class="tally-category"><div class="category-dot" style="background:' + CAT_COLORS[cat] + '"></div><span style="color:' + CAT_COLORS[cat] + '">' + CAT_LABELS[cat] + '</span></div>';
+    catItems.forEach(function(pair) {
+      var id = pair[0], qty = pair[1];
+      var e = EQUIPMENT.find(function(x) { return x.id === id; });
+      if (!e) return;
+      total += qty;
+      if (e.watts) totalWatts += e.watts * qty;
+      var iconHtml = e.thumbData
+        ? '<img src="' + e.thumbData + '" style="width:14px;height:14px;object-fit:cover;border-radius:2px;vertical-align:middle;">'
+        : e.icon;
+      html += '<div class="tally-item"><div class="tally-icon">' + iconHtml + '</div><div class="tally-name">' + e.name + '</div><div class="tally-qty">×' + qty + '</div></div>';
+    });
+  });
+
+  container.innerHTML = html || '<div class="tally-empty">No equipment placed yet.<br>Drag items onto the canvas.</div>';
+  document.getElementById('tallyTotalCount').textContent = total;
+  var pw = document.getElementById('powerTotal');
+  var pv = document.getElementById('powerValue');
+  if (totalWatts > 0) {
+    pw.style.display = 'block';
+    pv.textContent = totalWatts >= 1000 ? (totalWatts / 1000).toFixed(1) + 'kW' : totalWatts + 'W';
+  } else {
+    pw.style.display = 'none';
+  }
+}
+
+// ============================================================
+// EXPORT CSV
+// ============================================================
+function exportCSV() {
+  var counts = {};
+  canvasItems.forEach(function(ci) {
+    if (ci.equipId) counts[ci.equipId] = (counts[ci.equipId] || 0) + 1;
+  });
+  var csv = 'Category,Equipment,Type,Quantity,Est Watts\n';
+  Object.entries(counts).forEach(function(pair) {
+    var id = pair[0], qty = pair[1];
+    var e = EQUIPMENT.find(function(x) { return x.id === id; });
+    if (!e) return;
+    csv += '"' + CAT_LABELS[e.cat] + '","' + e.name + '","' + e.sub + '",' + qty + ',' + (e.watts ? e.watts * qty : 'N/A') + '\n';
+  });
+  var name = document.getElementById('diagramName').value || 'lighting-diagram';
+  var a = document.createElement('a');
+  a.href = 'data:text/csv,' + encodeURIComponent(csv);
+  a.download = name.replace(/\s+/g, '-').toLowerCase() + '-tally.csv';
+  a.click();
+}
+</script>
+
+<script>
+// ============================================================
+// KIT DB EDITOR — LIST
+// ============================================================
+var editingKitId = null;
+
+function renderDBKitList() {
+  var list = document.getElementById('dbKitList');
+  document.getElementById('dbNavKitsCount').textContent = KITS.length;
+  if (!KITS.length) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;">No kits yet. Create one!</div>';
+    return;
+  }
+  list.innerHTML = KITS.map(function(kit) {
+    var totalUnits = kit.contents.reduce(function(s, c) { return s + c.qty; }, 0);
+    var active = editingKitId === kit.id ? 'active' : '';
+    return '<div class="db-kit-row ' + active + '" onclick="editKit(\'' + kit.id + '\')">' +
+      '<div class="dk-icon">' + kit.icon + '</div>' +
+      '<div class="dk-info">' +
+        '<div class="dk-name">' + kit.name + '</div>' +
+        '<div class="dk-sub">' + kit.contents.length + ' item types · ' + totalUnits + ' total units</div>' +
+      '</div>' +
+      '<button class="di-del" onclick="deleteKitFromList(\'' + kit.id + '\',event)" title="Delete">✕</button>' +
+    '</div>';
+  }).join('');
+}
+
+// ============================================================
+// KIT DB EDITOR — NEW KIT
+// ============================================================
+var _workingKitContents = [];
+
+function startNewKit() {
+  editingKitId = null;
+  _workingKitContents = [];
+  showKitForm();
+  document.getElementById('dbKitFormTitle').textContent = 'New Kit';
+  document.getElementById('dbKitNewBadge').style.display = 'inline';
+  document.getElementById('deleteKitBtn').style.display = 'none';
+  document.getElementById('kfName').value = '';
+  document.getElementById('kfSub').value = '';
+  document.getElementById('kfIcon').value = '🎁';
+  document.getElementById('kfDesc').value = '';
+  document.getElementById('kitContentsList').innerHTML = '';
+  populateKitAddSelect();
+  updateKitPreview();
+  renderDBKitList();
+}
+
+function showKitForm() {
+  document.getElementById('dbKitEmptyState').style.display = 'none';
+  document.getElementById('dbKitFormWrap').style.display = 'flex';
+}
+
+// ============================================================
+// KIT DB EDITOR — EDIT EXISTING KIT
+// ============================================================
+function editKit(kitId) {
+  editingKitId = kitId;
+  var kit = KITS.find(function(k) { return k.id === kitId; });
+  if (!kit) return;
+  showKitForm();
+  document.getElementById('dbKitFormTitle').textContent = kit.name;
+  document.getElementById('dbKitNewBadge').style.display = 'none';
+  document.getElementById('deleteKitBtn').style.display = 'block';
+  document.getElementById('kfName').value = kit.name;
+  document.getElementById('kfSub').value = kit.sub || '';
+  document.getElementById('kfIcon').value = kit.icon;
+  document.getElementById('kfDesc').value = kit.desc || '';
+  renderKitContentsList(kit.contents);
+  populateKitAddSelect();
+  updateKitPreview();
+  renderDBKitList();
+}
+
+// ============================================================
+// KIT CONTENTS LIST RENDERING
+// ============================================================
+function renderKitContentsList(contents) {
+  var list = document.getElementById('kitContentsList');
+  list.innerHTML = '';
+  contents.forEach(function(c, idx) {
+    var eq = EQUIPMENT.find(function(e) { return e.id === c.equipId; });
+    if (!eq) return;
+    var row = document.createElement('div');
+    row.className = 'kit-content-row';
+    row.dataset.idx = idx;
+    var iconHtml = eq.thumbData
+      ? '<img src="' + eq.thumbData + '" style="width:16px;height:16px;object-fit:cover;border-radius:2px;">'
+      : eq.icon;
+    row.innerHTML =
+      '<div class="kc-icon">' + iconHtml + '</div>' +
+      '<div class="kc-name">' + eq.name + '</div>' +
+      '<input class="kc-qty" type="number" min="1" max="99" value="' + c.qty + '" onchange="updateKitQty(this,' + idx + ')">' +
+      '<button class="kc-del" onclick="removeKitItem(' + idx + ')">✕</button>';
+    list.appendChild(row);
+  });
+  updateKitPreview();
+}
+
+function updateKitQty(input, idx) {
+  var kit = getWorkingKit();
+  if (kit && kit.contents[idx]) {
+    kit.contents[idx].qty = parseInt(input.value) || 1;
+    updateKitPreview();
+  }
+}
+
+function removeKitItem(idx) {
+  var kit = getWorkingKit();
+  if (!kit) return;
+  kit.contents.splice(idx, 1);
+  renderKitContentsList(kit.contents);
+}
+
+function getWorkingKit() {
+  if (editingKitId) return KITS.find(function(k) { return k.id === editingKitId; });
+  return { contents: _workingKitContents };
+}
+
+// ============================================================
+// KIT ITEM PICKER POPULATE
+// ============================================================
+function populateKitAddSelect() {
+  var sel = document.getElementById('kitAddSelect');
+  var cats = ['lights','grip','digital','expendables'];
+  sel.innerHTML = '<option value="">— Add equipment to kit —</option>';
+  cats.forEach(function(cat) {
+    var items = EQUIPMENT.filter(function(e) { return e.cat === cat; });
+    if (!items.length) return;
+    var og = document.createElement('optgroup');
+    og.label = CAT_LABELS[cat];
+    items.forEach(function(item) {
+      var opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = item.icon + ' ' + item.name;
+      og.appendChild(opt);
+    });
+    sel.appendChild(og);
+  });
+}
+
+function addItemToKit() {
+  var sel = document.getElementById('kitAddSelect');
+  var equipId = sel.value;
+  if (!equipId) return;
+
+  var contents;
+  if (editingKitId) {
+    var kit = KITS.find(function(k) { return k.id === editingKitId; });
+    if (!kit) return;
+    contents = kit.contents;
+  } else {
+    contents = _workingKitContents;
+  }
+
+  var existing = contents.find(function(c) { return c.equipId === equipId; });
+  if (existing) {
+    existing.qty++;
+  } else {
+    contents.push({ equipId: equipId, qty: 1 });
+  }
+  renderKitContentsList(contents);
+  sel.value = '';
+}
+
+// ============================================================
+// KIT PREVIEW UPDATE
+// ============================================================
+function updateKitPreview() {
+  var icon = document.getElementById('kfIcon').value || '🎁';
+  var name = document.getElementById('kfName').value || 'New Kit';
+  document.getElementById('kitPreviewIcon').textContent = icon;
+  document.getElementById('kitPreviewLabel').textContent = name;
+
+  var contents = editingKitId
+    ? (KITS.find(function(k) { return k.id === editingKitId; }) || { contents: [] }).contents
+    : _workingKitContents;
+
+  var chips = document.getElementById('kitPreviewChips');
+  if (!contents.length) {
+    chips.innerHTML = '<span style="font-size:10px;color:var(--text3);">No items added yet</span>';
+    return;
+  }
+  chips.innerHTML = contents.map(function(c) {
+    var eq = EQUIPMENT.find(function(e) { return e.id === c.equipId; });
+    if (!eq) return '';
+    return '<span class="kit-chip">' + eq.icon + ' ' + (c.qty > 1 ? '×' + c.qty + ' ' : '') + eq.name + '</span>';
+  }).join('');
+}
+
+// ============================================================
+// KIT DB EDITOR — SAVE
+// ============================================================
+function saveKit() {
+  var name = document.getElementById('kfName').value.trim();
+  var sub = document.getElementById('kfSub').value.trim();
+  var icon = document.getElementById('kfIcon').value || '🎁';
+  var desc = document.getElementById('kfDesc').value.trim();
+
+  if (!name) { document.getElementById('kfName').focus(); alert('Kit name is required.'); return; }
+
+  var contents;
+  if (editingKitId) {
+    contents = (KITS.find(function(k) { return k.id === editingKitId; }) || { contents: [] }).contents;
+  } else {
+    contents = _workingKitContents;
+  }
+
+  if (!contents.length) { alert('Add at least one item to the kit.'); return; }
+
+  if (editingKitId) {
+    var idx = KITS.findIndex(function(k) { return k.id === editingKitId; });
+    if (idx > -1) KITS[idx] = Object.assign({}, KITS[idx], { name:name, sub:sub, icon:icon, desc:desc, contents:contents.slice() });
+    document.getElementById('dbKitFormTitle').textContent = name;
+  } else {
+    var id = 'kit-' + Date.now();
+    KITS.push({ id:id, icon:icon, name:name, sub:sub, desc:desc, contents:contents.slice() });
+    editingKitId = id;
+    _workingKitContents = [];
+    document.getElementById('dbKitNewBadge').style.display = 'none';
+    document.getElementById('deleteKitBtn').style.display = 'block';
+    document.getElementById('dbKitFormTitle').textContent = name;
+  }
+
+  saveKitsToStorage();
+  renderDBKitList();
+  renderKitsSidebar();
+  updateDBCount();
+  var s = document.getElementById('kitSaveStatus');
+  s.classList.add('show');
+  setTimeout(function() { s.classList.remove('show'); }, 2000);
+}
+
+// ============================================================
+// KIT DB EDITOR — DELETE
+// ============================================================
+function deleteCurrentKit() {
+  if (!editingKitId) return;
+  if (!confirm('Delete this kit?')) return;
+  deleteKitFromList(editingKitId, null);
+}
+function deleteKitFromList(kitId, e) {
+  if (e) { e.stopPropagation(); if (!confirm('Delete this kit?')) return; }
+  var idx = KITS.findIndex(function(k) { return k.id === kitId; });
+  if (idx > -1) KITS.splice(idx, 1);
+  if (editingKitId === kitId) {
+    editingKitId = null;
+    _workingKitContents = [];
+    document.getElementById('dbKitEmptyState').style.display = 'flex';
+    document.getElementById('dbKitFormWrap').style.display = 'none';
+  }
+  saveKitsToStorage();
+  renderDBKitList();
+  renderKitsSidebar();
+  updateDBCount();
+}
+
+// ============================================================
+// KIT PERSISTENCE
+// ============================================================
+function saveKitsToStorage() {
+  try { localStorage.setItem('gafferDiagram_kits', JSON.stringify(KITS)); } catch (e) {}
+}
+function loadKitsFromStorage() {
+  try {
+    var saved = localStorage.getItem('gafferDiagram_kits');
+    if (saved) {
+      var parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) { KITS.length = 0; parsed.forEach(function(k) { KITS.push(k); }); }
+    }
+  } catch (e) {}
+}
+
+// ============================================================
+// updateDBCount
+// ============================================================
+function updateDBCount() {
+  document.getElementById('dbCount').textContent = EQUIPMENT.length + ' items · ' + KITS.length + ' kits';
+  document.getElementById('dbNavItemsCount').textContent = EQUIPMENT.length;
+  document.getElementById('dbNavKitsCount').textContent = KITS.length;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById('tallyDate').textContent = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+loadDBFromStorage();
+renderEquipmentList();
+loadKitsFromStorage();
+renderKitsSidebar();
+updateDBCount();
+</script>
+
+</body>
+</html>
