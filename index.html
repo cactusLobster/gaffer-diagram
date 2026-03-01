@@ -953,6 +953,134 @@
   .fp-upload-btn-active { border-color: var(--accent) !important; color: var(--accent) !important; background: rgba(124,92,191,0.08) !important; }
   #fpControlsBar.visible { display: flex !important; }
 
+  /* ── AI ANALYSIS PANEL ── */
+  #aiAnalysisPanel {
+    position: fixed;
+    top: 52px;
+    right: 0;
+    width: 420px;
+    height: calc(100vh - 52px);
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+  }
+  #aiAnalysisPanel.open { transform: translateX(0); }
+  .ai-header {
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, var(--digital) 0%, var(--accent2) 100%);
+  }
+  .ai-header h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: white;
+  }
+  .ai-content { flex: 1; overflow-y: auto; padding: 16px; }
+  .ai-upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 16px;
+  }
+  .ai-upload-zone:hover { border-color: var(--accent); background: rgba(124,92,191,0.05); }
+  .ai-upload-zone.has-image { padding: 0; border-style: solid; }
+  .ai-upload-zone img { width: 100%; border-radius: 6px; }
+  .ai-upload-zone .placeholder { color: var(--text3); }
+  .ai-upload-zone .placeholder span { font-size: 48px; display: block; margin-bottom: 8px; }
+  .ai-results {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .ai-results h4 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .ai-light-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--surface);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+  .ai-light-item:hover { border-color: var(--accent); }
+  .ai-light-item .icon { font-size: 24px; }
+  .ai-light-item .info { flex: 1; }
+  .ai-light-item .name { font-weight: 600; font-size: 13px; }
+  .ai-light-item .role { font-size: 11px; color: var(--text3); }
+  .ai-light-item .add-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .ai-confidence {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--surface);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .ai-confidence-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--surface3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .ai-confidence-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width 0.3s;
+  }
+  .ai-loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text3);
+  }
+  .ai-loading .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   /* Scale modal unit toggle */
   #scaleModal .modal { max-height: 92vh; overflow-y: auto; }
 
@@ -1043,6 +1171,12 @@
         </label>
         <button class="tool-btn" id="fpSettingsBtn" onclick="openFloorPlanPanel()" title="Floor Plan Settings" style="display:none;font-size:11px;">⚙</button>
       </div>
+      <!-- AI ANALYSIS BUTTON -->
+      <div class="tool-group">
+        <button class="tool-btn" onclick="toggleAIPanel()" title="AI Lighting Analysis" style="font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;padding:0 8px;width:auto;gap:4px;display:flex;align-items:center;background:linear-gradient(135deg,var(--digital),var(--accent2));color:white;border:none;">
+          🤖 AI Analyze
+        </button>
+      </div>
       <div class="canvas-info" id="canvasInfo">items: 0 | zoom: 100%</div>
     </div>
     <!-- FLOOR PLAN CONTROLS BAR (shown when floor plan is loaded) -->
@@ -1116,6 +1250,25 @@
     <div class="sidebar-content" id="notesPanel" style="display:none;padding:10px;">
       <textarea id="notesArea" style="width:100%;height:100%;min-height:300px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;padding:8px;resize:none;outline:none;" placeholder="Diagram notes, shoot details, call sheet info..."></textarea>
     </div>
+  </div>
+</div>
+
+<!-- AI ANALYSIS PANEL -->
+<div id="aiAnalysisPanel">
+  <div class="ai-header">
+    <h3>🤖 AI Lighting Analysis</h3>
+    <button class="btn" onclick="toggleAIPanel()" style="padding:4px 8px;background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.3);color:white;">✕</button>
+  </div>
+  <div class="ai-content">
+    <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Upload a reference photo and AI will analyze the lighting setup and suggest equipment.</p>
+    <label class="ai-upload-zone" id="aiUploadZone">
+      <div class="placeholder">
+        <span>📷</span>
+        Drop image or click to upload
+      </div>
+      <input type="file" accept="image/*" style="display:none" onchange="handleAIUpload(event)">
+    </label>
+    <div id="aiResults" style="display:none;"></div>
   </div>
 </div>
 
@@ -3063,6 +3216,118 @@ function updateDBCount() {
   document.getElementById('dbCount').textContent = EQUIPMENT.length + ' items · ' + KITS.length + ' kits';
   document.getElementById('dbNavItemsCount').textContent = EQUIPMENT.length;
   document.getElementById('dbNavKitsCount').textContent = KITS.length;
+}
+
+// ============================================================
+// AI LIGHTING ANALYSIS
+// ============================================================
+let aiUploadedImage = null;
+
+function toggleAIPanel() {
+  document.getElementById('aiAnalysisPanel').classList.toggle('open');
+}
+
+function handleAIUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    aiUploadedImage = ev.target.result;
+    const zone = document.getElementById('aiUploadZone');
+    zone.classList.add('has-image');
+    zone.innerHTML = `<img src="${aiUploadedImage}" alt="Reference">
+      <input type="file" accept="image/*" style="display:none" onchange="handleAIUpload(event)">`;
+    analyzeImage();
+  };
+  reader.readAsDataURL(file);
+}
+
+function analyzeImage() {
+  const results = document.getElementById('aiResults');
+  results.style.display = 'block';
+  results.innerHTML = `
+    <div class="ai-loading">
+      <div class="spinner"></div>
+      <p>Analyzing lighting setup...</p>
+    </div>
+  `;
+
+  // Simulate AI analysis (in production, this calls an API)
+  setTimeout(() => {
+    // Mock response - would come from vision AI in production
+    const mockAnalysis = {
+      confidence: 0.87,
+      description: "Interview/portrait setup with soft key light, subtle fill, and hair light separation.",
+      lights: [
+        { role: 'Key Light', suggestion: 'arri-skypanel-s60', position: 'camera-left, 45°', modifier: 'softbox' },
+        { role: 'Fill Light', suggestion: 'aputure-ls-c300d', position: 'camera-right, low', modifier: 'bounce' },
+        { role: 'Hair/Rim Light', suggestion: 'dedolight-400', position: 'behind subject, high', modifier: 'snoot' },
+        { role: 'Background', suggestion: 'litemat-2', position: 'on background', modifier: 'diffusion' }
+      ]
+    };
+    renderAIResults(mockAnalysis);
+  }, 2000);
+}
+
+function renderAIResults(analysis) {
+  const results = document.getElementById('aiResults');
+  const lightsHtml = analysis.lights.map(light => {
+    const item = EQUIPMENT.find(x => x.id === light.suggestion);
+    if (!item) return '';
+    return `
+      <div class="ai-light-item" onclick="addAISuggestion('${light.suggestion}')">
+        <div class="icon">${item.icon}</div>
+        <div class="info">
+          <div class="name">${item.name}</div>
+          <div class="role">${light.role} • ${light.position}</div>
+        </div>
+        <button class="add-btn">+ Add</button>
+      </div>
+    `;
+  }).join('');
+
+  results.innerHTML = `
+    <div class="ai-results">
+      <h4>Detected Lighting Setup</h4>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">${analysis.description}</p>
+      ${lightsHtml}
+      <div class="ai-confidence">
+        <span>Confidence:</span>
+        <div class="ai-confidence-bar">
+          <div class="ai-confidence-fill" style="width:${analysis.confidence * 100}%"></div>
+        </div>
+        <span style="font-weight:600;color:var(--green);">${Math.round(analysis.confidence * 100)}%</span>
+      </div>
+      <button class="btn primary" style="width:100%;margin-top:16px;" onclick="addAllAISuggestions()">
+        + Add All to Diagram
+      </button>
+    </div>
+    <p style="font-size:10px;color:var(--text3);margin-top:12px;text-align:center;">
+      ⚠️ AI suggestions are estimates. Adjust based on your specific needs.
+    </p>
+  `;
+}
+
+function addAISuggestion(equipId) {
+  const canvas = document.getElementById('diagram-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const x = 100 + Math.random() * 200;
+  const y = 100 + Math.random() * 200;
+
+  canvasItems.push({ uid: nextId++, equipId: equipId, x: x, y: y });
+  renderCanvasItem(canvasItems[canvasItems.length - 1], true);
+  updateTally();
+  updateCanvasInfo();
+  pushHistory();
+}
+
+function addAllAISuggestions() {
+  // Get mock suggestions (in production, store from analysis)
+  const suggestions = ['arri-skypanel-s60', 'aputure-ls-c300d', 'dedolight-400', 'litemat-2'];
+  suggestions.forEach((equipId, i) => {
+    setTimeout(() => addAISuggestion(equipId), i * 150);
+  });
 }
 
 // ============================================================
